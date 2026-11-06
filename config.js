@@ -1,5 +1,5 @@
-// Public Supabase settings (the anon key is public by design; data is protected by Row Level Security)
+// Public Supabase settings (the publishable key is public by design; data is protected by Row Level Security)
 window.PORTAL_CONFIG = {
-  url: 'SUPABASE_URL',
-  anonKey: 'SUPABASE_ANON_KEY'
+  url: 'https://rpnwnlwminzgihjdgwen.supabase.co',
+  anonKey: 'sb_publishable_72ul7TvFe_SxIjQJC50KpQ_HNymr-Jn'
 };
