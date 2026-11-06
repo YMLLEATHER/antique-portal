@@ -76,6 +76,7 @@
   .empty{color:var(--muted);font-size:.84rem;padding:18px 0;text-align:center}
   .tag{display:inline-block;background:#efe9e0;border-radius:6px;padding:1px 7px;font-size:.72rem;color:var(--accent);margin:2px 4px 0 0}
   .tag.past{background:#eef1f4;color:#55687a} .tag.lock{background:#fff4e2;color:#9a6a1a}
+  .tag.chk{background:var(--errBg);color:var(--err)} .tag.staff{background:#f3f0fa;color:#5b4a8a}
   .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .bar input[type=search]{max-width:260px}
   .foot{text-align:center;color:var(--muted);font-size:.74rem;padding-top:12px}
@@ -128,7 +129,7 @@
         <h2 style="margin:0"><span id="custName">—</span> — your books</h2>
         <input type="search" id="q" placeholder="Search title, ref, year…" oninput="renderList()" dir="auto">
         <select id="flt" onchange="renderList()" style="width:auto;padding:6px 8px">
-          <option value="">All</option><option value="new">New (from portal)</option><option value="past">Past orders</option></select>
+          <option value="">All</option><option value="new">New (from portal)</option><option value="work">In work</option><option value="past">Past orders</option><option value="check" id="optCheck" class="hidden">⚠ Check (YML)</option></select>
         <button class="ghost mini" onclick="exportCSV()">⬇ Export CSV</button>
       </div>
       <div id="listBox"><div class="empty">Loading…</div></div>
@@ -227,7 +228,9 @@ const el = id => document.getElementById(id);
 const val = id => (el(id).value || '').trim();
 const esc = s => ('' + (s == null ? '' : s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const num = id => { const v = val(id); return v === '' ? null : Number(v); };
-let profiles = [], profile = null, books = [], editing = null, volData = [];
+let profiles = [], profile = null, books = [], editing = null, volData = [], isStaff = false;
+const ORDER = { in_work: 0, check: 1 };
+const isPast = b => b.origin === 'sheet' && (b.hist_status === 'done' || (b.hist_status === 'check' && !isStaff) || !b.hist_status);
 const initialHash = location.hash;
 
 function msg(id, text, ok){ const m = el(id); m.textContent = text || ''; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
@@ -265,6 +268,8 @@ async function startApp(){
   profiles = data || [];
   if (!profiles.length) { show('login'); return msg('lMsg', 'Your account is not linked to a book list yet. Please contact YML.'); }
   show('app');
+  try { const r = await sb.rpc('am_i_staff'); isStaff = r.data === true; } catch(e) {}
+  el('optCheck').classList.toggle('hidden', !isStaff);
   const saved = (()=>{ try { return localStorage.getItem('yml_profile'); } catch(e){ return null; } })();
   profile = profiles.find(p => p.id === saved) || profiles[0];
   const sel = el('profSel');
@@ -290,6 +295,7 @@ async function loadBooks(){
     if (error) { el('listBox').innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
     all = all.concat(data); if (data.length < 1000) break; from += 1000;
   }
+  all.sort((a, b) => (ORDER[a.hist_status] ?? 9) - (ORDER[b.hist_status] ?? 9));
   books = all; renderList();
 }
 
@@ -303,7 +309,9 @@ function renderList(){
   el('countTab').textContent = books.length;
   const rows = books.filter(b => {
     if (f === 'new' && b.origin !== 'portal') return false;
-    if (f === 'past' && b.origin !== 'sheet') return false;
+    if (f === 'past' && !isPast(b)) return false;
+    if (f === 'work' && !(b.hist_status === 'in_work' || (b.origin === 'portal' && b.locked))) return false;
+    if (f === 'check' && b.hist_status !== 'check') return false;
     if (!q) return true;
     return [b.spine_top,b.spine_mid,b.spine_bot,b.front_text,b.name_line,b.ref,b.set_name,b.notes].join(' ').toLowerCase().includes(q);
   });
@@ -311,8 +319,11 @@ function renderList(){
   const shown = rows.slice(0, 500);
   el('listBox').innerHTML = '<table><thead><tr><th>Book</th><th></th></tr></thead><tbody>' + shown.map(b => {
     const t = [];
-    if (b.origin === 'sheet') t.push('<span class="tag past">Past order</span>');
+    if (b.hist_status === 'in_work') t.push('<span class="tag lock">🔒 In work</span>');
+    else if (b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
+    else if (b.origin === 'sheet') t.push('<span class="tag past">Past order</span>');
     else if (b.locked) t.push('<span class="tag lock">🔒 In work — contact YML to change</span>');
+    if (isStaff && b.hist_detail) t.push(`<span class="tag staff">YML: ${esc(b.hist_detail)}</span>`);
     if (b.ref) t.push(`<span class="tag">Ref ${esc(b.ref)}</span>`);
     if (b.spine_bot) t.push(`<span class="tag" dir="auto">${esc(b.spine_bot)}</span>`);
     if (b.front_text) t.push(`<span class="tag" dir="auto">Front: ${esc(b.front_text.replace(/\n/g,' / '))}</span>`);
@@ -328,7 +339,7 @@ function renderList(){
     const canDel = canEdit && !b.dyn_id;
     return `<tr><td><b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
       + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
-      + `<td style="white-space:nowrap;text-align:right">${b.origin === 'sheet' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
+      + `<td style="white-space:nowrap;text-align:right">${isPast(b) ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
       + (canEdit ? ` <button class="mini ghost" onclick="editBook(${b.id})">Edit</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
