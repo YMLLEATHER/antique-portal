@@ -166,27 +166,21 @@
         <input type="text" id="t_name" dir="auto" placeholder="e.g. owner's name / dedication" oninput="render()">
 
         <div class="row">
-          <div><label>Level</label>
-            <select id="level"><option value="">—</option><option>Level 1</option><option selected>Level 2</option><option>Level 3</option><option>Level 4</option></select></div>
+          <div><label>Work type</label>
+            <select id="level" onchange="toggles()"></select></div>
           <div id="qtyWrap"><label>Copies</label><input type="number" id="qty" value="1" min="1" max="50"></div>
         </div>
 
-        <div id="extras" class="box hidden">
-          <div style="font-size:.78rem;color:var(--muted)">Options for your account</div>
-          <label class="chk" style="margin-top:6px"><input type="checkbox" id="halfleather"> Half leather</label>
-          <label class="chk" style="margin-top:6px"><input type="checkbox" id="stickers"> Stickers / labels</label>
-        </div>
-
-        <label class="chk"><input type="checkbox" id="isfolder" onchange="toggles()"> Folder (Sheet Protector)</label>
+        <label class="chk"><input type="checkbox" id="isfolder" onchange="prepLevels();toggles()"> Folder binding (choose Level 1–4 above)</label>
         <div class="box hidden" id="folderbox">
           <div class="row3">
             <div><label>Paper width (cm)</label><input type="number" id="paperW" min="0" step="0.1"></div>
             <div><label>Paper height (cm)</label><input type="number" id="paperH" min="0" step="0.1"></div>
-            <div><label>Sleeves</label><input type="number" id="sleeves" min="1" value="1"></div>
+            <div><label>Plastic sleeves</label><input type="number" id="sleeves" min="0" value="0"></div>
           </div>
         </div>
 
-        <label class="chk"><input type="checkbox" id="isbox" onchange="toggles()"> Box</label>
+        <input type="checkbox" id="isbox" class="hidden">
         <div class="box hidden" id="boxbox">
           <div class="row3">
             <div><label>Width (cm)</label><input type="number" id="boxW" min="0" step="0.1"></div>
@@ -417,12 +411,12 @@ function renderList(){
     if (b.spine_bot) t.push(`<span class="tag" dir="auto">${esc(b.spine_bot)}</span>`);
     if (b.front_text) t.push(`<span class="tag" dir="auto">Front: ${esc(b.front_text.replace(/\n/g,' / '))}</span>`);
     if (b.name_line) t.push(`<span class="tag" dir="auto">Name: ${esc(b.name_line)}</span>`);
-    if (b.level) t.push(`<span class="tag">${esc(b.level)}</span>`);
+    if (b.level) t.push(`<span class="tag">${esc(b.level === 'Box' ? 'Box (quote)' : b.level)}</span>`);
     if (b.set_name) t.push(`<span class="tag" dir="auto">Set: ${esc(b.set_name)}${b.vol ? ' · Vol ' + b.vol + (b.vol_total ? '/' + b.vol_total : '') : ''}</span>`);
     if (b.is_folder) t.push(`<span class="tag">Folder${b.paper_w||b.paper_h ? ' ' + (b.paper_w||'?') + '×' + (b.paper_h||'?') + ' cm' : ''}${b.sleeves ? ' · ' + b.sleeves + ' sleeves' : ''}</span>`);
     if (b.is_box) t.push(`<span class="tag">Box${[b.box_w,b.box_h,b.box_d].some(x=>x) ? ' ' + [b.box_w,b.box_h,b.box_d].map(x=>x||'?').join('×') + ' cm' : ''}${b.box_note ? ' · ' + esc(b.box_note) : ''}</span>`);
-    if (b.half_leather) t.push('<span class="tag">Half leather</span>');
-    if (b.stickers) t.push('<span class="tag">Stickers</span>');
+    if (b.half_leather && b.level !== 'Half leather') t.push('<span class="tag">Half leather</span>');
+    if (b.stickers && b.level !== 'Stickers') t.push('<span class="tag">Stickers</span>');
     const title = b.spine_top || b.spine_mid || (b.is_folder ? 'Folder' : b.is_box ? 'Box' : '—');
     const canEdit = b.origin === 'portal' && !b.locked && curTab !== 'hist';
     const canDel = curTab === 'draft';
@@ -438,6 +432,7 @@ function renderList(){
 /* ---------- form ---------- */
 function toggles(){
   el('folderbox').classList.toggle('hidden', !el('isfolder').checked);
+  el('isbox').checked = el('level').value === 'Box';
   el('boxbox').classList.toggle('hidden', !el('isbox').checked);
   el('setbox').classList.toggle('hidden', !el('isset').checked);
   el('setNewOnly').classList.toggle('hidden', !!editing); el('setEditOnly').classList.toggle('hidden', !editing);
@@ -494,12 +489,20 @@ function render(){
 
 function clearForm(){
   ['ref','t_top','t_mid','t_bot','t_front','t_name','setname','notes','paperW','paperH','boxW','boxH','boxD','boxnote','volno'].forEach(id => el(id).value = '');
-  ['isfolder','isbox','isset','samemid','samebot','halfleather','stickers'].forEach(id => el(id).checked = false);
-  el('level').value = 'Level 2'; el('qty').value = '1'; el('vol').value = '2'; el('sleeves').value = '1';
+  ['isfolder','isbox','isset','samemid','samebot'].forEach(id => el(id).checked = false);
+  el('level').value = 'Level 2'; el('qty').value = '1'; el('vol').value = '2'; el('sleeves').value = '0';
   volData = []; window._smid = ''; window._sbot = ''; msg('fMsg', '');
 }
+function prepLevels(){
+  const cur = el('level').dataset.want || el('level').value || 'Level 2'; el('level').dataset.want = '';
+  const folder = el('isfolder').checked;
+  const opts = ['Level 1','Level 2','Level 3','Level 4'].concat(folder ? [] : (profile.show_extras ? ['Half leather','Stickers'] : []).concat(['New spine','Box']));
+  const LBL = { 'Box': 'Box – price by quote' };
+  el('level').innerHTML = opts.map(o => `<option value="${o}">${LBL[o] || o}</option>`).join('');
+  el('level').value = opts.includes(cur) ? cur : 'Level 2';
+}
 function prepForm(){
-  el('extras').classList.toggle('hidden', !profile.show_extras);
+  prepLevels();
   el('qtyWrap').classList.toggle('hidden', !!editing);
   el('formTitle').textContent = editing ? 'Edit book' : 'New book';
   el('saveBtn').textContent = editing ? 'Save changes' : 'Save to “To send”';
@@ -508,9 +511,10 @@ function prepForm(){
 function newBook(){ editing = null; clearForm(); prepForm(); }
 function fill(b){
   el('ref').value = b.ref||''; el('t_top').value = b.spine_top||''; el('t_mid').value = b.spine_mid||''; el('t_bot').value = b.spine_bot||'';
-  el('t_front').value = b.front_text||''; el('t_name').value = b.name_line||''; el('level').value = b.level||'';
-  el('halfleather').checked = !!b.half_leather; el('stickers').checked = !!b.stickers;
-  el('isfolder').checked = !!b.is_folder; el('paperW').value = b.paper_w ?? ''; el('paperH').value = b.paper_h ?? ''; el('sleeves').value = b.sleeves ?? '1';
+  el('t_front').value = b.front_text||''; el('t_name').value = b.name_line||'';
+  el('level').innerHTML = '<option></option>'; el('level').value = '';
+  el('level').dataset.want = b.half_leather ? 'Half leather' : b.stickers ? 'Stickers' : b.is_box && !b.level ? 'Box' : (b.level || 'Level 2');
+  el('isfolder').checked = !!b.is_folder; el('paperW').value = b.paper_w ?? ''; el('paperH').value = b.paper_h ?? ''; el('sleeves').value = b.sleeves ?? '0';
   el('isbox').checked = !!b.is_box; el('boxW').value = b.box_w ?? ''; el('boxH').value = b.box_h ?? ''; el('boxD').value = b.box_d ?? ''; el('boxnote').value = b.box_note||'';
   el('isset').checked = !!b.set_name; el('setname').value = b.set_name||''; el('vol').value = b.vol_total || 2; el('volno').value = b.vol || '';
   el('notes').value = b.notes||'';
@@ -523,7 +527,7 @@ function rowFromForm(){
     profile_id: profile.id, ref: val('ref') || null,
     spine_top: val('t_top') || null, spine_mid: val('t_mid') || null, spine_bot: val('t_bot') || null,
     front_text: val('t_front') || null, name_line: val('t_name') || null, level: val('level') || null,
-    half_leather: profile.show_extras && el('halfleather').checked, stickers: profile.show_extras && el('stickers').checked,
+    half_leather: val('level') === 'Half leather', stickers: val('level') === 'Stickers',
     is_folder: el('isfolder').checked, paper_w: el('isfolder').checked ? num('paperW') : null, paper_h: el('isfolder').checked ? num('paperH') : null,
     sleeves: el('isfolder').checked ? num('sleeves') : null,
     is_box: el('isbox').checked, box_w: el('isbox').checked ? num('boxW') : null, box_h: el('isbox').checked ? num('boxH') : null,
