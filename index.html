@@ -142,6 +142,8 @@
         <select id="flt" onchange="renderList()" class="hidden" style="width:auto;padding:6px 8px">
           <option value="">All</option><option value="check">⚠ Check (YML)</option></select>
         <button class="ghost mini" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="ghost mini hidden" id="syncBtn" onclick="syncNow()" title="YML only">⟳ Sync Dyntechs</button>
+        <span id="syncInfo" class="hidden" style="font-size:.72rem;color:var(--muted)"></span>
       </div>
       <div id="kindBar" class="kinds hidden"></div>
       <div id="sendBar" class="box hidden" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px">
@@ -306,6 +308,7 @@ async function startApp(){
   if (!profiles.length) { show('login'); return msg('lMsg', 'Your account is not linked to a book list yet. Please contact YML.'); }
   show('app');
   try { const r = await sb.rpc('am_i_staff'); isStaff = r.data === true; } catch(e) {}
+  el('syncBtn').classList.toggle('hidden', !isStaff); el('syncInfo').classList.toggle('hidden', !isStaff); if (isStaff) showLastSync();
   const saved = (()=>{ try { return localStorage.getItem('yml_profile'); } catch(e){ return null; } })();
   profile = profiles.find(p => p.id === saved) || profiles[0];
   const sel = el('profSel');
@@ -321,6 +324,16 @@ async function switchProfile(){
   profile = profiles.find(p => p.id === el('profSel').value);
   try { localStorage.setItem('yml_profile', profile.id); } catch(e){}
   selected.clear(); await loadBooks(); showTab('draft');
+}
+async function showLastSync(){
+  try { const { data } = await sb.rpc('last_sync'); const r = data && data[0];
+    el('syncInfo').textContent = r ? 'Last sync ' + new Date(r.started_at).toLocaleString([], {month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}) + (r.ok === false ? ' ⚠ error' : '') : ''; } catch(e) {}
+}
+async function syncNow(){
+  const b = el('syncBtn'); b.disabled = true; b.textContent = '⟳ Syncing…';
+  const { error } = await sb.rpc('sync_now');
+  if (error) { alert('Sync failed: ' + error.message); b.disabled = false; b.textContent = '⟳ Sync Dyntechs'; return; }
+  setTimeout(async () => { await loadBooks(); await showLastSync(); b.disabled = false; b.textContent = '⟳ Sync Dyntechs'; }, 12000);
 }
 async function loadBooks(){
   el('custName').textContent = profile.name;
