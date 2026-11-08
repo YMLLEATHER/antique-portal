@@ -516,7 +516,7 @@ function render(){
     const sm = el('samemid').checked, sbt = el('samebot').checked;
     for (let v = 0; v < Math.min(n, 12); v++) {
       const d = volData[v] || {};
-      html += spineHtml(top, sm ? sharedMid() : d.mid, sbt ? sharedBot() : d.bot, 'Vol ' + (v+1), small);
+      html += spineHtml(top, (sm ? sharedMid() : d.mid) || val('t_mid'), (sbt ? sharedBot() : d.bot) || val('t_bot'), 'Vol ' + (v+1), small);
     }
   } else html += spineHtml(top, val('t_mid'), val('t_bot'), editing && el('isset').checked ? 'Vol ' + val('volno') : '', false);
   el('spines').innerHTML = html;
@@ -588,7 +588,7 @@ async function save(){
       const n = Math.min(Math.max(parseInt(val('vol'),10) || 1, 1), 40), sm = el('samemid').checked, sbt = el('samebot').checked;
       if (!r.spine_top) r.spine_top = r.set_name;
       for (let v = 1; v <= n; v++) { const d = volData[v-1] || {};
-        rows.push({ ...r, vol: v, vol_total: n, spine_mid: (sm ? sharedMid() : (d.mid||'').trim()) || null, spine_bot: (sbt ? sharedBot() : (d.bot||'').trim()) || null }); }
+        rows.push({ ...r, vol: v, vol_total: n, spine_mid: (sm ? sharedMid() : (d.mid||'').trim()) || r.spine_mid || null, spine_bot: (sbt ? sharedBot() : (d.bot||'').trim()) || r.spine_bot || null }); }
     } else {
       const q = Math.min(Math.max(parseInt(val('qty'),10) || 1, 1), 50);
       for (let i = 0; i < q; i++) rows.push({ ...r });
