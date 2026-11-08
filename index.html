@@ -310,18 +310,19 @@ async function startApp(){
   try { const r = await sb.rpc('am_i_staff'); isStaff = r.data === true; } catch(e) {}
   el('syncBtn').classList.toggle('hidden', !isStaff); el('syncInfo').classList.toggle('hidden', !isStaff); if (isStaff) showLastSync();
   const saved = (()=>{ try { return localStorage.getItem('yml_profile'); } catch(e){ return null; } })();
-  profile = profiles.find(p => p.id === saved) || profiles[0];
+  profOpts = (isStaff && profiles.length > 1) ? [ALL_PROF].concat(profiles) : profiles;
+  profile = profOpts.find(p => p.id === saved) || profiles[0];
   const sel = el('profSel');
-  sel.innerHTML = profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  sel.innerHTML = profOpts.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   sel.value = profile.id;
-  const multi = profiles.length > 1;
+  const multi = profOpts.length > 1;
   sel.classList.toggle('hidden', !multi); el('profLbl').classList.toggle('hidden', !multi);
   el('profOne').textContent = multi ? '' : profile.name;
   await loadBooks();
   showTab(books.some(b => bucketOf(b) === 'draft') ? 'draft' : 'work');
 }
 async function switchProfile(){
-  profile = profiles.find(p => p.id === el('profSel').value);
+  profile = profOpts.find(p => p.id === el('profSel').value);
   try { localStorage.setItem('yml_profile', profile.id); } catch(e){}
   selected.clear(); await loadBooks(); showTab('draft');
 }
@@ -337,21 +338,26 @@ async function syncNow(){
 }
 async function loadBooks(){
   el('custName').textContent = profile.name;
+  const isAll = profile.id === ALL_PROF.id;
+  el('tab-add').classList.toggle('hidden', isAll);
   el('listBox').innerHTML = '<div class="empty">Loading…</div>';
   let all = [], from = 0;
   while (true) {
-    const { data, error } = await sb.from('books').select('*').eq('profile_id', profile.id)
+    let qb = sb.from('books').select('*'); if (!isAll) qb = qb.eq('profile_id', profile.id);
+    const { data, error } = await qb
       .order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, from + 999);
     if (error) { el('listBox').innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
     all = all.concat(data); if (data.length < 1000) break; from += 1000;
   }
   all.sort((a, b) => (ORDER[a.hist_status] ?? 9) - (ORDER[b.hist_status] ?? 9));
-  const fr = await sb.from('fix_requests').select('book_id,issue,status,created_at').eq('profile_id', profile.id).in('status', ['open','accepted']);
+  let fq = sb.from('fix_requests').select('book_id,issue,status,created_at'); if (!isAll) fq = fq.eq('profile_id', profile.id);
+  const fr = await fq.in('status', ['open','accepted']);
   fixOpen = {}; (fr.data || []).forEach(r => fixOpen[r.book_id] = r);
   books = all; renderList();
 }
 
-let curTab = 'draft', fixOpen = {}, fixBookId = null, curKind = '';
+let curTab = 'draft', fixOpen = {}, fixBookId = null, curKind = '', profOpts = [];
+const ALL_PROF = { id: '__all', name: 'All customers (YML)', show_extras: true };
 const KINDS = [['','All'],['bind','Bindings'],['half','Half leather'],['stk','Stickers']];
 function kindOf(b){ return (b.level === 'Half leather' || b.half_leather) ? 'half' : (b.level === 'Stickers' || b.stickers) ? 'stk' : 'bind'; }
 function setKind(k){ curKind = k; renderList(); }
@@ -431,6 +437,7 @@ function renderList(){
   const shown = rows.slice(0, 500);
   el('listBox').innerHTML = '<table><thead><tr>' + (curTab === 'draft' ? '<th></th>' : '') + '<th>Book</th><th></th></tr></thead><tbody>' + shown.map(b => {
     const t = [];
+    if (profile.id === ALL_PROF.id) { const pp = profiles.find(x => x.id === b.profile_id); t.push(`<span class="tag staff">${esc(pp ? pp.name : '')}</span>`); }
     if (curTab === 'work') t.push(b.locked || b.hist_status === 'in_work' ? '<span class="tag lock">🔒 In work</span>' : '<span class="tag lock">Sent · editable</span>');
     else if (curTab === 'hist' && b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
     if (fixOpen[b.id]) t.push(`<span class="tag fix">🔁 Fix requested: ${esc(ISSUE[fixOpen[b.id].issue] || '')}</span>`);
