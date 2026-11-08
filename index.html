@@ -24,6 +24,7 @@
   .tabs{max-width:1180px;margin:14px auto 0;padding:0 16px;display:flex;gap:8px}
   .tab{padding:9px 18px;border-radius:10px 10px 0 0;background:#ece5da;color:var(--muted);font-weight:700;cursor:pointer;border:1px solid var(--line);border-bottom:0}
   .tab.active{background:var(--card);color:var(--accent)}
+  @media (max-width:600px){.tabs{gap:4px;padding:0 8px}.tab{padding:8px 9px;font-size:.82rem}.tab .count{padding:1px 6px}}
   .wrap{max-width:1180px;margin:0 auto;padding:0 16px 18px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
   @media (max-width:880px){.grid{grid-template-columns:1fr}}
@@ -79,6 +80,10 @@
   .tag.chk{background:var(--errBg);color:var(--err)} .tag.staff{background:#f3f0fa;color:#5b4a8a}
   .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .bar input[type=search]{max-width:260px}
+  .modalbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .bno{display:inline-block;font-weight:800;font-size:.8rem;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;margin-right:6px;letter-spacing:.3px}
+  .bno.pend{background:#e9e3d9;color:var(--muted);font-weight:600}
+  .tag.fix{background:#e6f0fb;color:#2f5f8a}
   .foot{text-align:center;color:var(--muted);font-size:.74rem;padding-top:12px}
 </style>
 </head>
@@ -118,7 +123,9 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" id="tab-list" onclick="showTab('list')">My Books <span class="count" id="countTab">0</span></div>
+  <div class="tab active" id="tab-draft" onclick="showTab('draft')">To send <span class="count" id="cnt-draft">0</span></div>
+  <div class="tab" id="tab-work" onclick="showTab('work')">In work <span class="count" id="cnt-work">0</span></div>
+  <div class="tab" id="tab-hist" onclick="showTab('hist')">History <span class="count" id="cnt-hist">0</span></div>
   <div class="tab" id="tab-add" onclick="newBook()">＋ Add Book</div>
 </div>
 
@@ -126,11 +133,16 @@
   <div id="panel-list">
     <div class="card flat">
       <div class="bar">
-        <h2 style="margin:0"><span id="custName">—</span> — your books</h2>
-        <input type="search" id="q" placeholder="Search title, ref, year…" oninput="renderList()" dir="auto">
-        <select id="flt" onchange="renderList()" style="width:auto;padding:6px 8px">
-          <option value="">All</option><option value="new">New (from portal)</option><option value="work">In work</option><option value="past">Past orders</option><option value="check" id="optCheck" class="hidden">⚠ Check (YML)</option></select>
+        <h2 style="margin:0"><span id="custName">—</span> · <span id="listTitle"></span></h2>
+        <input type="search" id="q" placeholder="Search number, title, year…" oninput="renderList()" dir="auto">
+        <select id="flt" onchange="renderList()" class="hidden" style="width:auto;padding:6px 8px">
+          <option value="">All</option><option value="check">⚠ Check (YML)</option></select>
         <button class="ghost mini" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div id="sendBar" class="box hidden" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px">
+        <label class="chk" style="margin:0"><input type="checkbox" id="selAll" onchange="selectAll(this.checked)"> Select all</label>
+        <button class="primary" id="sendBtn" onclick="sendSelected()" disabled>Send to YML (0)</button>
+        <span style="font-size:.78rem;color:var(--muted)">Books here are your private list. YML receives them only after you send.</span>
       </div>
       <div id="listBox"><div class="empty">Loading…</div></div>
     </div>
@@ -206,7 +218,7 @@
 
         <div class="btns">
           <button class="primary" id="saveBtn" onclick="save()">Save</button>
-          <button class="ghost" onclick="showTab('list')">Cancel</button>
+          <button class="ghost" onclick="showTab(curTab)">Cancel</button>
         </div>
         <div class="msg" id="fMsg"></div>
       </section>
@@ -222,6 +234,33 @@
 </div>
 </div>
 
+<div id="fixModal" class="modalbg hidden">
+  <div class="card flat" style="max-width:460px;width:100%;max-height:90vh;overflow:auto">
+    <h2>🔁 Send back for fix</h2>
+    <div id="fixBook" dir="auto" style="font-weight:700;margin-bottom:6px"></div>
+    <label>What needs fixing?</label>
+    <div id="fixIssues">
+      <label class="chk"><input type="radio" name="fixIssue" value="wrong_text" onchange="fixUi()"> Wrong text</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="add_text" onchange="fixUi()"> Add text</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="bound_together" onchange="fixUi()"> Two books bound together (I forgot to say)</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="damage" onchange="fixUi()"> Damage / quality problem</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="other" onchange="fixUi()"> Other</label>
+    </div>
+    <div id="fixWhere" class="box hidden">
+      <div style="font-size:.8rem;color:var(--muted)">Where?</div>
+      <label class="chk"><input type="checkbox" value="spine_top"> Spine – top line</label>
+      <label class="chk"><input type="checkbox" value="spine_mid"> Spine – middle line</label>
+      <label class="chk"><input type="checkbox" value="spine_bot"> Spine – bottom line</label>
+      <label class="chk"><input type="checkbox" value="front"> Front cover</label>
+      <label class="chk"><input type="checkbox" value="name"> Name line</label>
+    </div>
+    <label>Details <span id="fixReq" style="color:var(--err)"></span></label>
+    <textarea id="fixNote" dir="auto" placeholder="What should it say / what happened"></textarea>
+    <div class="btns"><button class="primary" id="fixSend" onclick="sendFix()">Send to YML</button><button class="ghost" onclick="closeFix()">Cancel</button></div>
+    <div class="msg" id="fixMsg"></div>
+  </div>
+</div>
+
 <script>
 const sb = supabase.createClient(window.PORTAL_CONFIG.url, window.PORTAL_CONFIG.anonKey);
 const el = id => document.getElementById(id);
@@ -230,7 +269,6 @@ const esc = s => ('' + (s == null ? '' : s)).replace(/&/g,'&amp;').replace(/</g,
 const num = id => { const v = val(id); return v === '' ? null : Number(v); };
 let profiles = [], profile = null, books = [], editing = null, volData = [], isStaff = false;
 const ORDER = { in_work: 0, check: 1 };
-const isPast = b => b.origin === 'sheet' && (b.hist_status === 'done' || (b.hist_status === 'check' && !isStaff) || !b.hist_status);
 const initialHash = location.hash;
 
 function msg(id, text, ok){ const m = el(id); m.textContent = text || ''; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
@@ -269,7 +307,6 @@ async function startApp(){
   if (!profiles.length) { show('login'); return msg('lMsg', 'Your account is not linked to a book list yet. Please contact YML.'); }
   show('app');
   try { const r = await sb.rpc('am_i_staff'); isStaff = r.data === true; } catch(e) {}
-  el('optCheck').classList.toggle('hidden', !isStaff);
   const saved = (()=>{ try { return localStorage.getItem('yml_profile'); } catch(e){ return null; } })();
   profile = profiles.find(p => p.id === saved) || profiles[0];
   const sel = el('profSel');
@@ -279,11 +316,12 @@ async function startApp(){
   sel.classList.toggle('hidden', !multi); el('profLbl').classList.toggle('hidden', !multi);
   el('profOne').textContent = multi ? '' : profile.name;
   await loadBooks();
+  showTab(books.some(b => bucketOf(b) === 'draft') ? 'draft' : 'work');
 }
 async function switchProfile(){
   profile = profiles.find(p => p.id === el('profSel').value);
   try { localStorage.setItem('yml_profile', profile.id); } catch(e){}
-  showTab('list'); await loadBooks();
+  selected.clear(); await loadBooks(); showTab('draft');
 }
 async function loadBooks(){
   el('custName').textContent = profile.name;
@@ -296,33 +334,84 @@ async function loadBooks(){
     all = all.concat(data); if (data.length < 1000) break; from += 1000;
   }
   all.sort((a, b) => (ORDER[a.hist_status] ?? 9) - (ORDER[b.hist_status] ?? 9));
+  const fr = await sb.from('fix_requests').select('book_id,issue,status,created_at').eq('profile_id', profile.id).in('status', ['open','accepted']);
+  fixOpen = {}; (fr.data || []).forEach(r => fixOpen[r.book_id] = r);
   books = all; renderList();
 }
 
+let curTab = 'draft', fixOpen = {}, fixBookId = null;
+const ISSUE = { wrong_text: 'Wrong text', add_text: 'Add text', bound_together: 'Two books bound together', damage: 'Damage / quality', other: 'Other' };
+function openFix(id){ const b = books.find(x => x.id === id); fixBookId = id;
+  el('fixBook').textContent = (b.book_no ? b.book_no + ' · ' : '') + (b.spine_top || b.spine_mid || 'Book') + (b.spine_bot ? ' · ' + b.spine_bot : '');
+  document.querySelectorAll('#fixModal input').forEach(i => i.checked = false); el('fixNote').value = ''; msg('fixMsg', ''); fixUi();
+  el('fixModal').classList.remove('hidden'); }
+function closeFix(){ el('fixModal').classList.add('hidden'); fixBookId = null; }
+function fixIssue(){ const r = document.querySelector('input[name=fixIssue]:checked'); return r ? r.value : ''; }
+function fixUi(){ const i = fixIssue(); el('fixWhere').classList.toggle('hidden', !(i === 'wrong_text' || i === 'add_text'));
+  el('fixReq').textContent = (i === 'other' || i === 'damage' || i === 'wrong_text' || i === 'add_text') ? '(required)' : ''; }
+async function sendFix(){
+  const issue = fixIssue(), note = val('fixNote');
+  const where = [...document.querySelectorAll('#fixWhere input:checked')].map(i => i.value);
+  if (!issue) return msg('fixMsg', 'Please choose what needs fixing.');
+  if ((issue === 'wrong_text' || issue === 'add_text') && !where.length) return msg('fixMsg', 'Please choose where.');
+  if (el('fixReq').textContent && !note) return msg('fixMsg', 'Please add details.');
+  el('fixSend').disabled = true;
+  const { error } = await sb.from('fix_requests').insert({ book_id: fixBookId, profile_id: profile.id, issue, where_parts: where, note: note || null });
+  el('fixSend').disabled = false;
+  if (error) return msg('fixMsg', 'Could not send: ' + error.message);
+  closeFix(); await loadBooks();
+}
+const selected = new Set();
+const TITLES = { draft: 'to send', work: 'in work at YML', hist: 'history' };
+// which list a book belongs to
+function bucketOf(b){
+  if (b.hist_status === 'done' || (b.origin === 'sheet' && b.hist_status !== 'in_work')) return 'hist';
+  if (b.origin === 'portal' && !b.sent) return 'draft';
+  return 'work';
+}
 function showTab(t){
-  el('tab-list').classList.toggle('active', t === 'list'); el('tab-add').classList.toggle('active', t === 'add');
-  el('panel-list').classList.toggle('hidden', t !== 'list'); el('panel-add').classList.toggle('hidden', t !== 'add');
+  if (t !== 'add') curTab = t;
+  ['draft','work','hist','add'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
+  el('panel-list').classList.toggle('hidden', t === 'add'); el('panel-add').classList.toggle('hidden', t !== 'add');
+  if (t !== 'add') renderList();
+}
+function selectAll(on){ books.filter(b => bucketOf(b) === 'draft').forEach(b => on ? selected.add(b.id) : selected.delete(b.id)); renderList(); }
+function toggleSel(id, on){ on ? selected.add(id) : selected.delete(id); updSend(); }
+function updSend(){ const n = [...selected].filter(id => books.some(b => b.id === id && bucketOf(b) === 'draft')).length;
+  el('sendBtn').textContent = `Send to YML (${n})`; el('sendBtn').disabled = !n; }
+async function sendSelected(){
+  const ids = [...selected].filter(id => books.some(b => b.id === id && bucketOf(b) === 'draft'));
+  if (!ids.length) return;
+  if (!confirm(`Send ${ids.length} book(s) to YML?`)) return;
+  el('sendBtn').disabled = true;
+  const { error } = await sb.from('books').update({ sent: true }).in('id', ids);
+  if (error) { alert('Could not send: ' + error.message); updSend(); return; }
+  selected.clear(); await loadBooks(); showTab('work');
 }
 
 function renderList(){
   const q = val('q').toLowerCase(), f = el('flt').value;
-  el('countTab').textContent = books.length;
+  const counts = { draft: 0, work: 0, hist: 0 };
+  books.forEach(b => counts[bucketOf(b)]++);
+  Object.keys(counts).forEach(k => el('cnt-' + k).textContent = counts[k]);
+  el('listTitle').textContent = TITLES[curTab];
+  el('sendBar').classList.toggle('hidden', curTab !== 'draft' || !counts.draft);
+  el('flt').classList.toggle('hidden', !(isStaff && curTab === 'hist'));
   const rows = books.filter(b => {
-    if (f === 'new' && b.origin !== 'portal') return false;
-    if (f === 'past' && !isPast(b)) return false;
-    if (f === 'work' && !(b.hist_status === 'in_work' || (b.origin === 'portal' && b.locked))) return false;
-    if (f === 'check' && b.hist_status !== 'check') return false;
+    if (bucketOf(b) !== curTab) return false;
+    if (curTab === 'hist' && f === 'check' && b.hist_status !== 'check') return false;
     if (!q) return true;
-    return [b.spine_top,b.spine_mid,b.spine_bot,b.front_text,b.name_line,b.ref,b.set_name,b.notes].join(' ').toLowerCase().includes(q);
+    return [b.book_no,b.spine_top,b.spine_mid,b.spine_bot,b.front_text,b.name_line,b.ref,b.set_name,b.notes].join(' ').toLowerCase().includes(q);
   });
-  if (!rows.length) { el('listBox').innerHTML = `<div class="empty">${books.length ? 'Nothing matches.' : 'No books yet. Click “＋ Add Book”.'}</div>`; return; }
+  updSend();
+  const EMPTY = { draft: 'Nothing waiting to send. Click “＋ Add Book” to start your list.', work: 'Nothing in work right now.', hist: 'No history yet.' };
+  if (!rows.length) { el('listBox').innerHTML = `<div class="empty">${counts[curTab] ? 'Nothing matches.' : EMPTY[curTab]}</div>`; return; }
   const shown = rows.slice(0, 500);
-  el('listBox').innerHTML = '<table><thead><tr><th>Book</th><th></th></tr></thead><tbody>' + shown.map(b => {
+  el('listBox').innerHTML = '<table><thead><tr>' + (curTab === 'draft' ? '<th></th>' : '') + '<th>Book</th><th></th></tr></thead><tbody>' + shown.map(b => {
     const t = [];
-    if (b.hist_status === 'in_work') t.push('<span class="tag lock">🔒 In work</span>');
-    else if (b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
-    else if (b.origin === 'sheet') t.push('<span class="tag past">Past order</span>');
-    else if (b.locked) t.push('<span class="tag lock">🔒 In work — contact YML to change</span>');
+    if (curTab === 'work') t.push(b.locked || b.hist_status === 'in_work' ? '<span class="tag lock">🔒 In work</span>' : '<span class="tag lock">Sent · editable</span>');
+    else if (curTab === 'hist' && b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
+    if (fixOpen[b.id]) t.push(`<span class="tag fix">🔁 Fix requested: ${esc(ISSUE[fixOpen[b.id].issue] || '')}</span>`);
     if (isStaff && b.hist_detail) t.push(`<span class="tag staff">YML: ${esc(b.hist_detail)}</span>`);
     if (b.ref) t.push(`<span class="tag">Ref ${esc(b.ref)}</span>`);
     if (b.spine_bot) t.push(`<span class="tag" dir="auto">${esc(b.spine_bot)}</span>`);
@@ -335,12 +424,13 @@ function renderList(){
     if (b.half_leather) t.push('<span class="tag">Half leather</span>');
     if (b.stickers) t.push('<span class="tag">Stickers</span>');
     const title = b.spine_top || b.spine_mid || (b.is_folder ? 'Folder' : b.is_box ? 'Box' : '—');
-    const canEdit = b.origin === 'portal' && !b.locked;
-    const canDel = canEdit && !b.dyn_id;
-    return `<tr><td><b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
+    const canEdit = b.origin === 'portal' && !b.locked && curTab !== 'hist';
+    const canDel = curTab === 'draft';
+    return `<tr>${curTab === 'draft' ? `<td style="width:28px"><input type="checkbox" ${selected.has(b.id) ? 'checked' : ''} onchange="toggleSel(${b.id},this.checked)"></td>` : ''}<td>${b.book_no ? `<span class="bno">${esc(b.book_no)}</span> ` : (curTab==='work' ? '<span class="bno pend">No. pending</span> ' : '')}<b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
       + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
-      + `<td style="white-space:nowrap;text-align:right">${isPast(b) ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
+      + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
       + (canEdit ? ` <button class="mini ghost" onclick="editBook(${b.id})">Edit</button>` : '')
+      + (curTab !== 'draft' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
 }
@@ -412,7 +502,7 @@ function prepForm(){
   el('extras').classList.toggle('hidden', !profile.show_extras);
   el('qtyWrap').classList.toggle('hidden', !!editing);
   el('formTitle').textContent = editing ? 'Edit book' : 'New book';
-  el('saveBtn').textContent = editing ? 'Save changes' : 'Save';
+  el('saveBtn').textContent = editing ? 'Save changes' : 'Save to “To send”';
   toggles(); showTab('add'); window.scrollTo(0, 0);
 }
 function newBook(){ editing = null; clearForm(); prepForm(); }
@@ -468,7 +558,7 @@ async function save(){
   }
   el('saveBtn').disabled = false;
   if (error) return msg('fMsg', 'Could not save: ' + error.message);
-  editing = null; clearForm(); showTab('list'); await loadBooks();
+  const wasEdit = !!editing; editing = null; clearForm(); await loadBooks(); showTab(wasEdit ? curTab : 'draft');
 }
 async function delBook(id){
   const b = books.find(x => x.id === id);
