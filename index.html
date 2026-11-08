@@ -154,6 +154,11 @@
         <h2 id="formTitle">New book</h2>
         <label>Your ref (optional)</label>
         <input type="text" id="ref" placeholder="row 123 / any marking">
+        <div class="row">
+          <div><label>Work type</label>
+            <select id="level" onchange="toggles()"></select></div>
+          <div id="qtyWrap"><label>Copies</label><input type="number" id="qty" value="1" min="1" max="50"></div>
+        </div>
         <label>Spine — top line</label>
         <input type="text" id="t_top" dir="auto" placeholder="Book title" oninput="render()">
         <label>Spine — middle line</label>
@@ -165,11 +170,6 @@
         <label>Name line (embossing)</label>
         <input type="text" id="t_name" dir="auto" placeholder="e.g. owner's name / dedication" oninput="render()">
 
-        <div class="row">
-          <div><label>Work type</label>
-            <select id="level" onchange="toggles()"></select></div>
-          <div id="qtyWrap"><label>Copies</label><input type="number" id="qty" value="1" min="1" max="50"></div>
-        </div>
 
         <label class="chk"><input type="checkbox" id="isfolder" onchange="prepLevels();toggles()"> Folder binding (choose Level 1–4 above)</label>
         <div class="box hidden" id="folderbox">
