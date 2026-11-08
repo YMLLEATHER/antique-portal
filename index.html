@@ -452,7 +452,7 @@ function renderList(){
       + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
       + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
       + (canEdit ? ` <button class="mini ghost" onclick="editBook(${b.id})">Edit</button>` : '')
-      + (curTab !== 'draft' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
+      + (curTab === 'hist' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
 }
