@@ -84,6 +84,10 @@
   .bno{display:inline-block;font-weight:800;font-size:.8rem;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;margin-right:6px;letter-spacing:.3px}
   .bno.pend{background:#e9e3d9;color:var(--muted);font-weight:600}
   .tag.fix{background:#e6f0fb;color:#2f5f8a}
+  .kinds{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+  .kind{border:1px solid var(--line,#ddd);background:#fff;border-radius:999px;padding:4px 12px;font-size:.8rem;cursor:pointer;color:var(--accent)}
+  .kind.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .kind .n{opacity:.7;margin-left:4px;font-size:.72rem}
   .foot{text-align:center;color:var(--muted);font-size:.74rem;padding-top:12px}
 </style>
 </head>
@@ -139,6 +143,7 @@
           <option value="">All</option><option value="check">⚠ Check (YML)</option></select>
         <button class="ghost mini" onclick="exportCSV()">⬇ Export CSV</button>
       </div>
+      <div id="kindBar" class="kinds hidden"></div>
       <div id="sendBar" class="box hidden" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px">
         <label class="chk" style="margin:0"><input type="checkbox" id="selAll" onchange="selectAll(this.checked)"> Select all</label>
         <button class="primary" id="sendBtn" onclick="sendSelected()" disabled>Send to YML (0)</button>
@@ -333,7 +338,10 @@ async function loadBooks(){
   books = all; renderList();
 }
 
-let curTab = 'draft', fixOpen = {}, fixBookId = null;
+let curTab = 'draft', fixOpen = {}, fixBookId = null, curKind = '';
+const KINDS = [['','All'],['bind','Bindings'],['half','Half leather'],['stk','Stickers']];
+function kindOf(b){ return (b.level === 'Half leather' || b.half_leather) ? 'half' : (b.level === 'Stickers' || b.stickers) ? 'stk' : 'bind'; }
+function setKind(k){ curKind = k; renderList(); }
 const ISSUE = { wrong_text: 'Wrong text', add_text: 'Add text', bound_together: 'Two books bound together', damage: 'Damage / quality', other: 'Other' };
 function openFix(id){ const b = books.find(x => x.id === id); fixBookId = id;
   el('fixBook').textContent = (b.book_no ? b.book_no + ' · ' : '') + (b.spine_top || b.spine_mid || 'Book') + (b.spine_bot ? ' · ' + b.spine_bot : '');
@@ -391,8 +399,15 @@ function renderList(){
   el('listTitle').textContent = TITLES[curTab];
   el('sendBar').classList.toggle('hidden', curTab !== 'draft' || !counts.draft);
   el('flt').classList.toggle('hidden', !(isStaff && curTab === 'hist'));
+  const inTab = books.filter(b => bucketOf(b) === curTab), kc = { '': inTab.length, bind: 0, half: 0, stk: 0 };
+  inTab.forEach(b => kc[kindOf(b)]++);
+  const showK = !!(profile && profile.show_extras) && (kc.half || kc.stk);
+  el('kindBar').classList.toggle('hidden', !showK);
+  if (!showK) curKind = '';
+  el('kindBar').innerHTML = KINDS.map(([k, l]) => `<span class="kind${curKind === k ? ' on' : ''}" onclick="setKind('${k}')">${l}<span class="n">${kc[k]}</span></span>`).join('');
   const rows = books.filter(b => {
     if (bucketOf(b) !== curTab) return false;
+    if (curKind && kindOf(b) !== curKind) return false;
     if (curTab === 'hist' && f === 'check' && b.hist_status !== 'check') return false;
     if (!q) return true;
     return [b.book_no,b.spine_top,b.spine_mid,b.spine_bot,b.front_text,b.name_line,b.ref,b.set_name,b.notes].join(' ').toLowerCase().includes(q);
