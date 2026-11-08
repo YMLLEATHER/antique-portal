@@ -268,7 +268,8 @@ const el = id => document.getElementById(id);
 const val = id => (el(id).value || '').trim();
 const esc = s => ('' + (s == null ? '' : s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const num = id => { const v = val(id); return v === '' ? null : Number(v); };
-let profiles = [], profile = null, books = [], editing = null, volData = [], isStaff = false;
+let profiles = [], profile = null, books = [], editing = null, editingSet = null, volData = [], isStaff = false;
+const CALL_OFFICE = 'To make changes, please call the office';
 const ORDER = { in_work: 0, check: 1 };
 const initialHash = location.hash;
 
@@ -438,7 +439,10 @@ function renderList(){
   el('listBox').innerHTML = '<table><thead><tr>' + (curTab === 'draft' ? '<th></th>' : '') + '<th>Book</th><th></th></tr></thead><tbody>' + shown.map(b => {
     const t = [];
     if (profile.id === ALL_PROF.id) { const pp = profiles.find(x => x.id === b.profile_id); t.push(`<span class="tag staff">${esc(pp ? pp.name : '')}</span>`); }
-    if (curTab === 'work') t.push(b.locked || b.hist_status === 'in_work' ? '<span class="tag lock">🔒 In work</span>' : '<span class="tag lock">Sent · editable</span>');
+    const grp = b.set_name && b.origin === 'portal' ? setGroup(b) : null;
+    const canEdit = curTab !== 'hist' && (grp ? setEditable(grp) : (b.origin === 'portal' && !b.locked));
+    if (curTab === 'work') t.push(canEdit ? '<span class="tag lock">Sent · editable</span>' : '<span class="tag lock">🔒 In work · ' + CALL_OFFICE + '</span>');
+    else if (curTab === 'draft' && !canEdit) t.push('<span class="tag lock">🔒 ' + CALL_OFFICE + '</span>');
     else if (curTab === 'hist' && b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
     if (fixOpen[b.id]) t.push(`<span class="tag fix">🔁 Fix requested: ${esc(ISSUE[fixOpen[b.id].issue] || '')}</span>`);
     if (isStaff && b.hist_detail) t.push(`<span class="tag staff">YML: ${esc(b.hist_detail)}</span>`);
@@ -453,12 +457,11 @@ function renderList(){
     if (b.half_leather && b.level !== 'Half leather') t.push('<span class="tag">Half leather</span>');
     if (b.stickers && b.level !== 'Stickers') t.push('<span class="tag">Stickers</span>');
     const title = b.spine_top || b.spine_mid || (b.is_folder ? 'Folder' : b.is_box ? 'Box' : '—');
-    const canEdit = b.origin === 'portal' && !b.locked && curTab !== 'hist';
     const canDel = curTab === 'draft';
     return `<tr>${curTab === 'draft' ? `<td style="width:28px"><input type="checkbox" ${selected.has(b.id) ? 'checked' : ''} onchange="toggleSel(${b.id},this.checked)"></td>` : ''}<td>${b.book_no ? `<span class="bno">${esc(b.book_no)}</span> ` : (curTab==='work' ? '<span class="bno pend">No. pending</span> ' : '')}<b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
       + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
       + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
-      + (canEdit ? ` <button class="mini ghost" onclick="editBook(${b.id})">Edit</button>` : '')
+      + (canEdit ? ` <button class="mini ghost" onclick="${grp ? 'editSet' : 'editBook'}(${b.id})">${grp ? 'Edit set' : 'Edit'}</button>` : '')
       + (curTab === 'hist' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
@@ -538,12 +541,30 @@ function prepLevels(){
 }
 function prepForm(){
   prepLevels();
-  el('qtyWrap').classList.toggle('hidden', !!editing);
-  el('formTitle').textContent = editing ? 'Edit book' : 'New book';
-  el('saveBtn').textContent = editing ? 'Save changes' : 'Save to “To send”';
+  el('qtyWrap').classList.toggle('hidden', !!(editing || editingSet));
+  el('formTitle').textContent = editingSet ? 'Edit set · ' + editingSet[0].set_name : editing ? 'Edit book' : 'New book';
+  el('saveBtn').textContent = (editing || editingSet) ? 'Save changes' : 'Save to “To send”';
   toggles(); showTab('add'); window.scrollTo(0, 0);
 }
-function newBook(){ editing = null; clearForm(); prepForm(); }
+function newBook(){ editing = null; editingSet = null; clearForm(); prepForm(); }
+/* a set = same customer, same set name, same number of volumes, same stage */
+function setGroup(b){
+  return books.filter(x => x.origin === 'portal' && x.profile_id === b.profile_id && x.set_name === b.set_name
+    && (x.vol_total || 0) === (b.vol_total || 0) && !!x.sent === !!b.sent && bucketOf(x) === bucketOf(b))
+    .sort((a, c) => (a.vol || 0) - (c.vol || 0) || a.id - c.id);
+}
+/* a set can be edited until YML received it (no book number yet, not locked) */
+function setEditable(g){ return g.length > 0 && g.every(x => x.origin === 'portal' && !x.locked && !x.book_no); }
+function editSet(id){
+  const b = books.find(x => x.id === id), g = setGroup(b);
+  if (!setEditable(g)) return alert(CALL_OFFICE);
+  editing = null; clearForm(); fill(g[0]); editingSet = g;
+  el('isset').checked = true; el('vol').value = g.length;
+  el('t_mid').value = ''; el('t_bot').value = '';
+  if (g[0].spine_top === g[0].set_name) el('t_top').value = '';
+  volData = g.map(x => ({ mid: x.spine_mid || '', bot: x.spine_bot || '' }));
+  prepForm();
+}
 function fill(b){
   el('ref').value = b.ref||''; el('t_top').value = b.spine_top||''; el('t_mid').value = b.spine_mid||''; el('t_bot').value = b.spine_bot||'';
   el('t_front').value = b.front_text||''; el('t_name').value = b.name_line||'';
@@ -554,8 +575,8 @@ function fill(b){
   el('isset').checked = !!b.set_name; el('setname').value = b.set_name||''; el('vol').value = b.vol_total || 2; el('volno').value = b.vol || '';
   el('notes').value = b.notes||'';
 }
-function editBook(id){ const b = books.find(x => x.id === id); editing = b; clearForm(); fill(b); prepForm(); }
-function reorder(id){ const b = books.find(x => x.id === id); editing = null; clearForm(); fill(b); el('isset').checked = false; el('setname').value = ''; prepForm(); }
+function editBook(id){ const b = books.find(x => x.id === id); editingSet = null; editing = b; clearForm(); fill(b); prepForm(); }
+function reorder(id){ const b = books.find(x => x.id === id); editing = null; editingSet = null; clearForm(); fill(b); el('isset').checked = false; el('setname').value = ''; prepForm(); }
 
 function rowFromForm(){
   return {
@@ -577,6 +598,24 @@ async function save(){
   if (el('isset').checked && !r.set_name) return msg('fMsg', 'Please enter the set name.');
   el('saveBtn').disabled = true; msg('fMsg', 'Saving…', true);
   let error;
+  if (editingSet) {
+    const g = editingSet, n = Math.min(Math.max(parseInt(val('vol'),10) || 1, 1), 40), sm = el('samemid').checked, sbt = el('samebot').checked;
+    if (!r.set_name) { el('saveBtn').disabled = false; return msg('fMsg', 'Please enter the set name.'); }
+    if (n < g.length && g.some(x => x.sent)) { el('saveBtn').disabled = false; return msg('fMsg', 'To remove volumes from a set that was already sent, please call the office.'); }
+    if (!r.spine_top) r.spine_top = r.set_name;
+    delete r.profile_id;
+    for (let v = 1; v <= n && !error; v++) {
+      const d = volData[v-1] || {};
+      const row = { ...r, vol: v, vol_total: n, spine_mid: (sm ? sharedMid() : (d.mid||'').trim()) || r.spine_mid || null, spine_bot: (sbt ? sharedBot() : (d.bot||'').trim()) || r.spine_bot || null };
+      if (v <= g.length) ({ error } = await sb.from('books').update(row).eq('id', g[v-1].id));
+      else ({ error } = await sb.from('books').insert({ ...row, profile_id: g[0].profile_id, sent: !!g[0].sent }));
+    }
+    if (!error && n < g.length) ({ error } = await sb.from('books').delete().in('id', g.slice(n).map(x => x.id)));
+    el('saveBtn').disabled = false;
+    if (error) return msg('fMsg', 'Could not save: ' + error.message);
+    editingSet = null; clearForm(); await loadBooks(); showTab(curTab);
+    return;
+  }
   if (editing) {
     if (r.set_name) { r.vol = num('volno'); }
     else { r.vol = null; r.vol_total = null; }
