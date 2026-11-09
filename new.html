@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Antique Books Portal — YML Leather</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Heebo:wght@400;500;700;800&family=Italiana&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<style>
+  :root{--bg:#f6f3ee;--card:#fff;--ink:#2b2622;--muted:#8a7f73;--accent:#7a5a36;--line:#e4ddd2;
+    --leather:#6b4c2f;--leatherEdge:#4e3720;--gold:#d9b779;--ok:#2e7d46;--okBg:#e8f5ec;--err:#9a3b2a;--errBg:#f6e4e0}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Heebo',system-ui,Arial,sans-serif;font-size:15px}
+  .hidden{display:none!important}
+  header.top{background:var(--accent);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header.top h1{margin:0;font-size:1.1rem;font-weight:800}
+  header.top .who{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.88rem;flex-wrap:wrap}
+  header.top select{padding:6px 10px;border-radius:8px;border:0;font:inherit;font-weight:700}
+  header.top button{background:rgba(255,255,255,.18);color:#fff;padding:6px 12px}
+  .tabs{max-width:1180px;margin:14px auto 0;padding:0 16px;display:flex;gap:8px}
+  .tab{padding:9px 18px;border-radius:10px 10px 0 0;background:#ece5da;color:var(--muted);font-weight:700;cursor:pointer;border:1px solid var(--line);border-bottom:0}
+  .tab.active{background:var(--card);color:var(--accent)}
+  @media (max-width:600px){.tabs{gap:4px;padding:0 8px}.tab{padding:8px 9px;font-size:.82rem}.tab .count{padding:1px 6px}}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px 18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  @media (max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:0 14px 14px 14px;padding:16px}
+  .card.flat{border-radius:14px}
+  .card h2{margin:0 0 12px;font-size:1rem;font-weight:800;color:var(--accent)}
+  label{display:block;font-size:.8rem;color:var(--muted);margin:10px 0 4px;font-weight:500}
+  label.chk{display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;color:var(--ink);font-size:.9rem}
+  input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],select,textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fdfcfa;color:var(--ink)}
+  input[type=checkbox]{width:auto}
+  textarea{min-height:52px;resize:vertical}
+  input[dir=auto],textarea[dir=auto]{text-align:start}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .box{margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:10px;background:#faf8f4}
+  .btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 18px;font-weight:700}
+  button:disabled{opacity:.5;cursor:default}
+  .primary{background:var(--accent);color:#fff}
+  .ghost{background:#efe9e0;color:var(--ink)}
+  .mini{padding:5px 10px;font-size:.78rem;border-radius:8px;font-weight:600}
+  .danger{background:var(--errBg);color:var(--err)}
+  .msg{font-size:.84rem;margin-top:10px}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+  /* login */
+  .login{max-width:380px;margin:9vh auto;padding:0 16px}
+  .login .card{border-radius:14px;padding:24px}
+  .login h1{font-size:1.25rem;color:var(--accent);margin:0 0 4px}
+  .login p{color:var(--muted);font-size:.85rem;margin:0 0 10px}
+  .link{background:none;color:var(--accent);padding:0;font-weight:500;font-size:.84rem;text-decoration:underline}
+
+  /* ===== YML brand (Brandbook Dec 2025) ===== */
+  :root{--bg:#f3eadb;--card:#fbf7f0;--ink:#1e0e01;--muted:#8a7a68;--accent:#5e3b21;--accent2:#8c5f35;--line:#e3d7c4;--gold:#c9a46a}
+  body{font-family:'Libre Baskerville','Heebo',Georgia,serif;font-size:14px;letter-spacing:.01em}
+  header.top{background:var(--ink);padding:14px 24px;gap:18px}
+  header.top h1{display:flex;align-items:center;gap:16px;font-family:'Italiana',serif;font-weight:400;font-size:1rem;letter-spacing:.32em;text-transform:uppercase;color:#f3eadb}
+  header.top h1 svg{height:52px;width:auto;display:block;color:#f3eadb}
+  header.top h1 .sep{width:1px;height:34px;background:rgba(243,234,219,.35)}
+  header.top select{background:#f3eadb;color:var(--ink);border-radius:2px;font-family:'Libre Baskerville',serif;font-weight:400}
+  header.top button{background:transparent;border:1px solid rgba(243,234,219,.5);color:#f3eadb;border-radius:2px;letter-spacing:.12em;text-transform:uppercase;font-size:.7rem}
+  .tab{font-family:'Italiana',serif;font-weight:400;letter-spacing:.22em;text-transform:uppercase;font-size:.95rem;border-radius:2px 2px 0 0;background:#e9dfcd}
+  .tab.active{background:var(--card);color:var(--ink)}
+  .tab .count{font-family:'Libre Baskerville',serif;letter-spacing:0}
+  .card{border-radius:0 2px 2px 2px;background:var(--card)}
+  .card.flat{border-radius:2px}
+  .card h2{font-family:'Italiana',serif;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-size:1.05rem}
+  button{border-radius:2px;font-family:'Libre Baskerville',serif;font-weight:700;letter-spacing:.06em}
+  .primary{background:var(--ink);color:#f3eadb}
+  .primary:hover{background:var(--accent)}
+  .ghost{background:#ece2d1}
+  .mini{border-radius:2px}
+  input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],select,textarea{border-radius:2px;background:#fffdf9}
+  .login{max-width:420px;margin:7vh auto}
+  .login .card{border-radius:2px;padding:34px 30px;text-align:center;border-color:var(--line)}
+  .login .card label,.login .card .btns{text-align:start}
+  .login .card .btns{justify-content:center}
+  .login .logo{height:150px;width:auto;margin:0 auto 14px;display:block;color:var(--ink)}
+  .login .welcome{font-family:'Mrs Saint Delafield',cursive;font-size:3rem;color:var(--ink);line-height:1;margin:6px 0 0}
+  .login h1{font-family:'Italiana',serif;font-weight:400;letter-spacing:.28em;text-transform:uppercase;color:var(--ink);font-size:1.15rem;margin:4px 0 6px}
+  .login p{font-style:italic}
+  .link{color:var(--accent)}
+  /* preview */
+  .spines{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;max-width:100%}
+  .front{width:150px;height:330px;border-radius:5px;background:linear-gradient(135deg,#7a5736,var(--leather));border:1px solid var(--leatherEdge);
+    box-shadow:inset 0 0 18px rgba(0,0,0,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--gold);
+    font-family:'Frank Ruhl Libre',serif;font-weight:700;text-align:center;padding:14px;font-size:1.15rem;line-height:1.3}
+  .front .ph{opacity:.45;font-weight:500}
+  .spine{width:110px;height:330px;border-radius:5px;background:linear-gradient(90deg,var(--leatherEdge),var(--leather) 14%,#7a5736 50%,var(--leather) 86%,var(--leatherEdge));
+    border:1px solid var(--leatherEdge);box-shadow:inset 0 0 18px rgba(0,0,0,.35);display:flex;flex-direction:column;color:var(--gold);padding:14px 8px}
+  .spine .band{display:flex;align-items:center;justify-content:center;text-align:center;font-family:'Frank Ruhl Libre',serif;font-weight:700;line-height:1.15;overflow:hidden;word-break:break-word}
+  .spine .b-top{flex:1.4;font-size:1.25rem} .spine .b-mid{flex:1} .spine .b-bot{flex:1;font-size:.7rem;font-weight:500}
+  .spine .rule{height:1px;background:rgba(217,183,121,.35);margin:4px 2px}
+  .cap{font-size:.7rem;color:var(--muted);margin-top:4px;text-align:center}
+  .hint{font-size:.74rem;color:var(--muted);margin-top:8px;line-height:1.5}
+  /* list */
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:.74rem}
+  .count{background:var(--okBg);color:var(--ok);border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700}
+  .empty{color:var(--muted);font-size:.84rem;padding:18px 0;text-align:center}
+  .tag{display:inline-block;background:#efe9e0;border-radius:6px;padding:1px 7px;font-size:.72rem;color:var(--accent);margin:2px 4px 0 0}
+  .tag.past{background:#eef1f4;color:#55687a} .tag.lock{background:#fff4e2;color:#9a6a1a}
+  .tag.chk{background:var(--errBg);color:var(--err)} .tag.staff{background:#f3f0fa;color:#5b4a8a}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .bar input[type=search]{max-width:260px}
+  .modalbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .bno{display:inline-block;font-weight:800;font-size:.8rem;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;margin-right:6px;letter-spacing:.3px}
+  .bno.pend{background:#e9e3d9;color:var(--muted);font-weight:600}
+  .tag.fix{background:#e6f0fb;color:#2f5f8a}
+  .kinds{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+  .kind{border:1px solid var(--line,#ddd);background:#fff;border-radius:999px;padding:4px 12px;font-size:.8rem;cursor:pointer;color:var(--accent)}
+  .kind.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .kind .n{opacity:.7;margin-left:4px;font-size:.72rem}
+  .foot{text-align:center;color:var(--muted);font-size:.74rem;padding-top:12px}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="login hidden" id="vLogin">
+  <div class="card">
+    <svg class="logo" aria-label="YML Leather" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 672 1039"><path fill="currentColor" fill-rule="evenodd" d="M136 1016L136 997L139 997L142 997L142 1013L142 1029L154 1029L165 1029L165 1032L165 1035L150 1035L136 1035L136 1016ZM193 1016L193 997L208 997L223 997L223 1000L223 1003L211 1003L199 1003L199 1008L199 1013L210 1013L222 1013L222 1016L222 1019L210 1019L199 1019L199 1024L199 1029L211 1029L223 1029L223 1032L223 1035L208 1035L193 1035L193 1016ZM250 1033C250.4 1031.5 254.2 1023.1 258.3 1014.0L266 998L270 997L275 997L283 1015C287.3 1025.4 291.0 1034.0 291.0 1034.4C291.0 1034.7 289.5 1035.0 287.7 1035.0C284.7 1035.0 284.2 1034.6 282.3 1030.0L280 1025L270 1025L260 1025L258 1030C256.1 1034.6 255.7 1035.0 252.5 1035.0C249.3 1035.0 249.1 1034.8 250.0 1032.8ZM331 1019L331 1003L324 1003L316 1003L316 1000L316 997L334 997L352 997L352 1000C351.5 1002.4 351.3 1002.5 344.2 1002.8L337 1003L337 1019L337 1035L334 1035L331 1035L331 1019ZM379 1016L379 997L382 997L385 997L385 1005L385 1013L396 1013L407 1013L407 1005L407 997L410 997L413 997L413 1016L413 1035L410 1035L407 1035L407 1027L407 1019L396 1019L385 1019L385 1027L385 1035L382 1035L379 1035L379 1016ZM443 1016L443 997L458 997L473 997L473 1000L473 1003L461 1003L449 1003L449 1008L449 1013L460 1013L472 1013L472 1016L472 1019L460 1019L449 1019L449 1024L449 1029L461 1029L473 1029L473 1032L473 1035L458 1035L443 1035L443 1016ZM502 1016L502 997L514 997C529.8 997.0 535.1 999.6 535.2 1007.9C535.3 1013.1 533.0 1016.5 528.6 1018.0L525 1019L527 1021C528.8 1022.5 531.3 1026.1 533.0 1029.2L536 1035L533 1035C529.4 1035.0 528.9 1034.5 525.4 1028.5C521.3 1021.6 518.9 1020.0 511.9 1020.0L508 1020L508 1028L508 1035L505 1035L502 1035L502 1016ZM277 1019C277.0 1017.3 270.5 1003.1 269.9 1003.7C269.2 1004.5 263.0 1018.8 263.0 1019.6C263.0 1019.8 266.1 1020.0 270.0 1020.0C273.9 1020.0 277.0 1019.7 277.0 1019.2ZM524 1015C527.8 1013.9 529.0 1012.6 529.0 1009.1C529.0 1004.2 526.5 1003.0 516.8 1003.0L508 1003L508 1010L508 1016L514 1016C517.7 1016.0 522.1 1015.6 523.9 1015.0ZM300 845L272 778L271 844L271 911L268 911L266 911L266 839L266 768L281 768L295 768L318 821C329.9 849.7 340.0 873.4 340.2 873.5C340.4 873.7 345.2 862.3 350.9 848.2C356.5 834.1 366.2 810.2 372.2 795.2L383 768L397 768L411 768L411 840L411 911L398 911L385 911L385 844L384 777L365 826C333.5 903.0 329.8 912.0 329.1 912.0C328.8 912.0 315.7 881.8 300.0 844.9ZM103 883L103 855L83 819C72.6 798.8 62.0 779.2 59.8 775.2L56 768L71 768L86 768L106 806C117.2 827.7 126.6 845.0 126.9 845.0C127.2 845.0 136.5 827.7 147.4 806.5C165.0 772.5 167.6 768.0 169.7 768.0C170.9 768.0 172.0 768.2 172.0 768.6C172.0 768.9 162.3 787.7 150.5 810.4L129 852L129 881L129 911L116 911L103 911L103 883ZM524 840L524 768L536 768L549 768L549 838L549 907L582 907C613.3 907.0 614.0 907.0 614.0 909.0C614.0 911.0 613.3 911.0 569.0 911.0L524 911L524 840ZM315 667C161.5 657.5 33.5 542.3 8.6 391.0C4.0 363.1 3.0 322.6 6.4 296.5C25.6 146.1 137.6 31.3 288.0 7.8C307.7 4.8 360.5 4.4 379.5 7.3C532.1 30.1 644.2 143.2 664.7 295.0C668.3 321.9 667.1 365.6 662.0 394.5C632.5 559.9 483.0 677.3 315.0 667.0ZM366 662C566.6 641.9 701.8 450.5 653.0 256.0C620.4 126.1 512.6 30.4 377.5 11.3C357.5 8.5 309.9 8.8 290.0 11.9C107.4 40.0 -14.5 203.8 12.1 385.4C33.4 531.3 154.8 646.7 303.0 661.9C315.2 663.1 354.0 663.2 366.1 662.0ZM318 640C176.1 631.4 59.0 526.6 35.5 387.5C6.3 214.7 127.3 53.5 301.0 33.6C326.7 30.6 362.8 31.6 388.0 36.1C553.0 65.1 663.4 221.1 635.9 386.4C610.5 539.5 472.6 649.4 317.5 640.0ZM370 631C503.2 616.4 609.2 513.3 630.2 378.5C633.4 358.1 633.4 313.9 630.2 293.5C607.1 145.3 483.9 38.9 335.5 38.9C152.0 38.9 13.0 202.4 42.1 383.9C59.8 494.5 141.4 588.1 248.3 620.4C288.7 632.6 328.2 636.2 370.4 631.4ZM236 511C226.2 508.2 216.2 493.9 211.8 476.8C209.4 467.6 209.4 467.4 212.4 466.8C213.9 466.6 214.6 468.0 216.9 476.0C222.0 493.9 229.5 505.1 237.3 506.5C242.4 507.5 245.5 505.9 247.9 501.2C256.5 484.3 259.6 418.4 253.5 380.5C251.5 368.0 248.0 353.0 247.0 353.0C246.6 353.0 243.9 357.1 241.0 362.0C229.6 381.8 217.3 395.3 205.0 401.3C189.8 408.8 170.0 403.6 163.9 390.5C158.5 378.9 163.2 367.9 174.2 366.4C185.9 364.8 191.0 371.6 186.4 382.5C178.7 401.0 200.1 406.1 215.0 389.3C224.1 379.0 234.6 360.3 240.4 344.2L243 337L240 328C228.1 298.3 211.1 276.0 199.0 275.0C187.1 274.0 182.4 280.3 186.5 292.0C190.2 302.4 187.1 308.0 177.5 308.0C166.6 308.0 162.0 303.6 162.0 293.3C162.0 279.1 172.8 270.0 189.8 269.8C207.6 269.7 223.5 282.6 240.0 310.9C243.6 316.9 246.8 321.9 247.1 321.9C248.0 322.0 251.9 303.9 254.3 289.0C259.3 256.8 255.6 186.3 248.3 173.8C239.8 159.3 225.2 170.3 217.4 197.1C214.2 207.9 213.9 208.4 211.2 207.6C209.2 206.9 209.2 206.8 211.7 197.7C218.3 173.3 228.6 162.5 245.1 162.6C262.2 162.7 273.8 174.0 280.3 196.8C283.9 209.6 283.4 244.5 279.2 268.0C277.5 277.6 276.2 285.6 276.4 285.8C277.0 286.3 332.0 186.4 332.0 184.9C332.0 182.4 323.0 172.0 319.4 170.3C312.9 167.1 310.2 171.7 314.0 179.4C318.6 189.1 310.0 194.8 300.4 188.5C292.2 183.2 291.9 168.3 299.9 164.1C309.7 158.8 327.8 165.9 333.9 177.3L335 180L338 176C352.1 157.7 377.0 157.7 377.0 175.7C377.0 182.7 374.8 186.4 369.2 189.1C364.6 191.4 358.4 191.2 356.8 188.8C355.5 186.7 355.9 180.7 357.5 178.6C359.4 176.1 359.4 171.6 357.6 170.1C354.3 167.3 345.0 174.0 340.5 182.3L339 186L366 236C381.7 263.0 394.5 285.9 395.0 286.3C395.4 286.8 395.0 283.2 393.9 278.2C388.3 250.6 386.7 215.4 390.4 199.5C396.0 175.2 408.3 162.6 426.5 162.6C439.0 162.6 447.2 168.5 454.1 182.6C458.3 191.1 462.4 206.2 460.7 207.2C458.1 208.8 457.1 207.8 455.5 202.3C450.4 183.6 444.2 172.7 436.8 168.9C422.0 161.3 416.3 179.7 415.3 238.5C414.7 273.8 415.7 286.9 420.6 309.0C423.7 322.8 424.0 323.2 427.0 317.8C444.6 285.8 462.5 269.8 480.6 269.8C498.4 269.9 509.3 278.9 509.3 293.5C509.3 303.6 504.5 308.0 493.6 308.0C484.0 308.0 481.4 303.3 484.9 291.7C487.5 282.9 486.8 279.4 482.1 276.6C468.1 268.5 448.6 287.2 433.9 323.1C428.1 337.1 428.0 337.4 432.6 348.6C448.4 387.9 470.1 408.3 483.7 396.6C486.8 393.9 487.2 387.9 484.6 381.8C479.4 369.6 489.7 361.8 502.6 368.0C507.6 370.5 509.3 373.9 509.2 381.5C509.1 392.8 502.4 400.4 489.8 403.6C468.9 409.0 450.9 396.6 430.6 362.7L424 352L423 355C417.8 371.6 415.0 397.1 415.0 427.7C415.0 481.4 420.3 507.0 431.2 507.0C441.3 507.0 449.8 494.3 456.0 470.2C457.0 466.2 459.0 465.2 461.7 467.4C461.9 467.5 460.8 471.8 459.5 477.0C451.9 505.0 437.0 516.6 416.2 510.5C405.2 507.2 395.1 493.8 391.0 476.9C386.9 459.8 387.4 433.2 392.5 404.1C393.9 396.1 394.9 389.3 394.8 388.9C394.6 388.5 381.9 410.9 366.6 438.7C334.8 496.1 336.9 489.7 346.7 499.8C351.2 504.4 352.4 505.1 355.2 504.8C358.1 504.5 358.5 504.1 358.8 501.3C359.0 499.5 358.4 497.0 357.6 495.8C355.7 493.1 355.5 486.9 357.2 485.2C359.3 483.1 367.3 483.7 371.1 486.3C375.4 489.2 377.0 492.3 377.0 498.4C377.0 517.0 352.1 516.9 338.0 498.1L335 495L332 499C322.4 513.0 303.3 516.6 296.3 506.1C289.9 496.6 296.6 484.0 308.2 484.0C315.6 484.0 317.8 488.2 314.0 495.3C310.7 501.4 311.8 505.0 316.9 505.0C319.8 505.0 330.6 494.4 331.6 490.6C332.0 488.8 325.5 476.3 304.4 438.2C289.1 410.6 276.4 388.2 276.3 388.4C276.1 388.6 277.0 394.8 278.4 402.1C290.6 468.2 278.3 510.3 246.6 511.6C242.7 511.8 237.7 511.4 235.5 510.8ZM369 424C408.4 352.5 416.0 338.4 416.0 337.3C416.0 335.7 336.0 189.6 335.5 190.2C335.1 190.7 265.5 317.2 260.1 327.3L255 337L260 347C278.2 381.1 335.5 483.9 336.1 483.3C336.5 482.8 351.2 456.4 368.7 424.5Z"/></svg>
+    <div class="welcome">Welcome</div>
+    <h1>Antique Books Portal</h1>
+    <p>Customer sign in</p>
+    <div id="loginForm">
+      <label>Email</label><input type="email" id="lEmail" autocomplete="username">
+      <label>Password</label><input type="password" id="lPass" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+      <div class="btns"><button class="primary" onclick="signIn()">Sign in</button>
+        <button class="link" onclick="forgot()">Forgot password?</button></div>
+    </div>
+    <div id="setPassForm" class="hidden">
+      <p>Choose a password for your account.</p>
+      <label>New password (8+ characters)</label><input type="password" id="np1" autocomplete="new-password">
+      <label>Repeat password</label><input type="password" id="np2" autocomplete="new-password" onkeydown="if(event.key==='Enter')setPass()">
+      <div class="btns"><button class="primary" onclick="setPass()">Save password</button></div>
+    </div>
+    <div class="msg" id="lMsg"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="vApp" class="hidden">
+<header class="top">
+  <h1><svg class="lg" aria-label="YML Leather" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1367 672"><path fill="currentColor" fill-rule="evenodd" d="M300 665C176.5 651.2 72.9 571.9 27.6 457.4C11.3 416.2 5.5 384.0 5.6 335.5C5.6 300.3 6.7 289.4 13.1 261.1C42.6 131.8 149.5 31.0 280.5 9.1C309.1 4.3 346.6 3.2 373.5 6.4C569.2 29.8 700.7 212.7 660.4 405.4C631.0 545.8 512.2 651.7 368.1 666.0C354.2 667.4 313.1 667.1 299.5 665.5ZM379 661C560.9 634.8 686.2 469.1 660.0 288.9C634.8 115.4 475.9 -8.1 302.0 10.5C135.1 28.3 9.0 168.4 9.0 336.0C9.0 503.0 134.2 642.5 301.0 661.5C317.6 663.4 362.8 662.8 379.0 660.5ZM309 639C215.0 629.9 133.9 581.6 82.6 504.5C30.1 425.8 17.5 326.3 48.5 236.1C84.8 130.5 179.0 51.8 289.2 35.1C441.3 12.0 585.2 103.3 628.5 250.5C643.6 301.6 644.5 360.4 631.0 412.3C599.5 534.1 495.9 624.1 370.5 638.5C358.7 639.9 319.5 640.4 309.0 639.3ZM381 630C545.4 603.3 656.0 451.8 629.9 289.0C603.2 122.1 442.6 11.0 276.4 44.5C155.0 69.0 61.3 167.9 41.8 292.1C38.5 313.2 38.5 358.8 41.8 379.7C62.9 513.8 166.8 614.3 302.0 631.6C318.2 633.6 364.8 632.8 381.0 630.2ZM237 511C229.3 508.5 222.0 501.1 217.1 490.6C214.5 485.0 209.4 468.2 210.2 467.5C210.4 467.4 211.4 467.0 212.6 466.6C214.4 466.0 214.9 466.9 217.4 475.7C222.4 493.3 230.4 505.0 238.4 506.6C250.7 508.9 255.7 489.7 256.7 436.0C257.4 400.0 255.4 379.8 248.9 355.7L248 352L246 355C223.8 392.0 210.2 404.4 191.5 404.4C173.4 404.4 162.7 395.8 162.6 381.1C162.5 370.8 167.6 366.0 178.4 366.0C187.5 366.0 190.5 371.9 187.0 382.6C184.4 390.4 185.0 394.2 189.3 397.4C202.0 406.8 222.5 387.8 237.5 352.6C243.7 338.0 243.7 337.5 240.5 328.8C228.3 296.6 210.9 274.9 197.0 274.7C186.9 274.5 183.3 280.5 187.0 291.4C190.9 303.1 187.4 308.5 176.5 307.8C165.7 307.1 161.0 301.1 162.5 289.9C164.2 277.6 175.0 269.7 190.3 269.7C209.3 269.6 225.9 284.0 243.7 315.9C247.9 323.2 247.9 323.2 250.8 310.5C255.9 288.3 256.5 281.3 256.5 246.0C256.5 186.9 251.5 165.0 238.4 167.4C230.3 169.0 221.7 181.9 217.0 199.8C214.8 207.8 214.0 208.9 211.1 207.1C210.0 206.4 210.3 204.6 212.5 196.9C219.4 172.8 229.3 162.5 245.5 162.5C278.1 162.5 291.0 203.0 279.5 269.0C278.1 277.0 276.7 284.4 276.4 285.5C276.0 286.8 276.1 287.1 276.7 286.5C277.8 285.4 331.5 188.4 332.5 185.9C333.3 183.8 325.2 173.1 321.0 170.7C314.6 166.9 309.9 172.6 314.5 178.6C319.0 184.6 314.6 191.9 307.3 190.5C299.0 189.0 294.8 184.0 294.8 176.0C294.8 166.6 299.4 162.5 309.9 162.5C318.5 162.6 324.6 165.6 331.5 173.3L337 179L339 175C351.0 158.4 375.5 157.6 377.7 173.9C378.9 183.1 372.9 190.3 363.8 190.4C356.1 190.5 353.7 185.5 358.1 178.4C362.2 171.8 358.7 167.0 352.3 170.5C348.1 172.8 340.0 182.2 340.0 184.8C340.0 185.7 352.7 209.2 368.1 237.0C384.5 266.4 395.9 286.0 395.5 284.0C386.4 233.6 386.6 203.9 396.3 183.8C410.0 155.4 441.4 154.5 454.5 182.3C459.4 192.6 462.8 205.9 460.9 207.1C458.1 208.8 457.4 207.9 455.7 200.9C448.6 171.5 430.7 157.4 423.0 175.2C415.5 192.7 412.7 255.7 417.9 290.5C420.3 306.3 423.9 322.2 425.0 321.5C425.4 321.3 428.1 317.0 430.9 312.0C447.3 283.7 463.9 269.6 480.8 269.6C499.7 269.7 510.9 279.5 509.8 295.1C509.2 304.0 504.3 308.0 494.2 308.0C484.8 308.0 481.3 301.3 485.5 291.3C491.4 277.2 477.6 269.1 463.8 278.7C453.0 286.1 438.9 309.0 430.5 332.5L429 338L434 350C448.1 384.7 465.3 403.0 479.6 399.0C486.7 397.0 488.9 390.8 485.5 382.7C481.5 373.0 485.0 366.0 494.0 366.0C505.3 366.0 509.5 370.0 509.5 380.9C509.5 393.3 503.6 400.1 490.0 403.6C469.1 408.9 449.8 394.8 429.0 359.0L425 352L422 361C412.2 400.2 413.0 479.0 423.8 501.0C431.2 516.1 448.2 501.9 455.3 474.6C457.5 466.1 458.1 465.2 461.0 467.0C464.3 469.1 455.8 492.5 448.3 501.7C442.4 509.0 437.0 511.5 427.0 511.5C409.7 511.5 398.3 500.8 391.8 478.5C388.3 466.3 388.5 429.0 392.3 408.0C393.7 400.0 395.2 391.9 395.5 390.0L396 386L394 390C393.1 391.9 380.2 415.0 365.6 441.4L339 489L342 493C346.0 499.3 352.6 505.0 355.3 505.0C360.1 505.0 361.4 500.6 358.0 495.5C353.7 489.0 356.2 483.6 363.4 483.7C374.7 483.9 381.3 494.8 376.2 505.0C370.5 516.4 350.3 513.4 339.7 499.6L336 495L332 501C322.9 510.5 311.0 514.5 301.8 510.7C292.6 506.9 292.2 490.9 301.2 485.6C304.8 483.4 312.1 483.0 314.4 484.9C316.4 486.6 316.5 492.8 314.5 495.4C313.7 496.5 313.0 498.9 313.0 500.7C313.0 508.4 322.3 505.0 329.4 494.7L333 489L306 440C290.9 412.7 278.0 389.6 277.2 388.5L276 386L276 388C278.5 395.9 282.2 422.2 283.1 436.3C285.7 474.1 277.8 498.7 260.1 508.4C254.2 511.5 243.1 512.7 237.0 510.9ZM851 464L851 440L854 440L858 440L858 460L858 481L873 481L888 481L888 484L888 488L870 488L851 488L851 464ZM924 464L924 440L943 440L962 440L962 444L962 447L946 447L931 447L931 454L931 460L946 460L961 460L961 463L961 467L946 467L932 468L931 474L931 481L946 481L962 481L962 484L962 488L943 488L924 488L924 464ZM995 487C995.5 486.8 1000.3 476.0 1006.0 463.2L1016 440L1022 440L1028 440L1038 463C1043.6 475.3 1048.4 486.1 1048.7 486.8C1049.1 487.6 1047.9 488.0 1044.8 488.0L1040 488L1037 482L1034 476L1022 476L1010 476L1007 482L1004 488L999 488C996.9 488.0 995.1 487.7 995.3 487.2ZM1099 468L1099 447L1090 447L1080 447L1080 444L1080 440L1103 440L1126 440L1126 443L1126 446L1116 447L1107 447L1107 468L1107 488L1103 488L1099 488L1099 468ZM1161 464L1161 440L1164 440L1168 440L1168 450L1168 460L1182 460L1197 460L1197 450L1197 440L1201 440L1205 440L1205 464L1205 488L1201 488L1197 488L1197 477L1197 467L1183 467L1168 468L1168 478L1168 488L1164 488L1161 488L1161 464ZM1243 464L1243 440L1262 440L1281 440L1281 444L1281 447L1266 447L1250 447L1250 454L1250 460L1265 460L1280 460L1280 463L1280 467L1265 467L1250 468L1250 474L1250 481L1265 481L1281 481L1281 484L1281 488L1262 488L1243 488L1243 464ZM1318 464L1318 440L1334 440C1344.4 440.0 1350.0 440.4 1352.3 441.4C1364.4 446.5 1362.5 464.6 1349.7 466.7L1346 467L1348 469C1350.4 469.8 1361.0 485.5 1361.0 487.5C1361.0 487.8 1359.1 488.0 1356.7 488.0C1352.4 488.0 1352.4 488.0 1348.2 480.7C1342.3 470.3 1341.4 469.6 1332.7 469.6L1326 470L1325 479L1325 488L1321 488L1318 488L1318 464ZM372 419C391.7 383.5 409.8 350.6 412.4 345.8L417 337L409 323C405.1 314.9 387.3 282.4 369.7 250.5C352.1 218.6 337.4 191.9 337.0 191.1C336.5 190.2 332.5 196.6 325.3 209.6C303.3 249.3 265.2 318.7 260.4 327.8L256 337L261 347C275.0 374.0 336.1 484.3 336.5 483.8C336.6 483.6 352.7 454.5 372.2 419.0ZM1031 468C1031.0 466.0 1022.1 447.0 1021.7 447.7C1020.9 449.0 1013.0 467.0 1013.0 467.5C1013.0 467.8 1017.0 468.0 1022.0 468.0C1027.0 468.0 1031.0 467.8 1031.0 467.6ZM1350 461C1351.3 459.7 1352.0 457.7 1352.0 455.0C1352.0 448.0 1350.0 447.0 1336.5 447.0L1325 447L1325 455L1325 463L1336 463C1346.7 463.0 1348.2 462.8 1350.0 461.0ZM1048 276L1020 209L1019 275L1019 342L1016 342L1014 342L1014 270L1014 199L1029 199L1043 200L1066 252C1077.9 280.7 1088.0 304.4 1088.2 304.5C1088.4 304.7 1093.2 293.3 1098.9 279.2C1104.5 265.1 1114.2 241.2 1120.2 226.2L1131 199L1145 199L1159 199L1159 270L1159 342L1146 342L1133 342L1133 275L1132 208L1113 257C1081.5 334.0 1077.8 343.0 1077.1 343.0C1076.8 343.0 1063.7 312.8 1048.0 275.9ZM851 314L851 286L831 250C820.6 229.8 810.0 210.2 807.8 206.2L804 199L819 199L834 199L854 238C865.2 258.7 874.6 276.0 874.9 276.0C875.2 276.0 884.5 258.7 895.4 237.5C913.0 203.5 915.6 199.0 917.7 199.0C918.9 199.0 920.0 199.2 920.0 199.6C920.0 199.9 910.3 218.7 898.5 241.4L877 283L877 312L877 342L864 342L851 342L851 314ZM1272 270L1272 199L1284 199L1297 199L1297 268L1297 338L1330 338C1361.3 338.0 1362.0 338.0 1362.0 340.0C1362.0 342.0 1361.3 342.0 1317.0 342.0L1272 342L1272 270Z"/></svg><span class="sep"></span>Antique Books Portal</h1>
+  <div class="who">
+    <span id="profLbl">Book list:</span>
+    <select id="profSel" onchange="switchProfile()"></select>
+    <span id="profOne" style="font-weight:700"></span>
+    <button class="mini" onclick="signOut()">Sign out</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" id="tab-draft" onclick="showTab('draft')">To send <span class="count" id="cnt-draft">0</span></div>
+  <div class="tab" id="tab-work" onclick="showTab('work')">In work <span class="count" id="cnt-work">0</span></div>
+  <div class="tab" id="tab-hist" onclick="showTab('hist')">History <span class="count" id="cnt-hist">0</span></div>
+  <div class="tab" id="tab-add" onclick="newBook()">＋ Add Book</div>
+</div>
+
+<div class="wrap">
+  <div id="panel-list">
+    <div class="card flat">
+      <div class="bar">
+        <h2 style="margin:0"><span id="custName">—</span> · <span id="listTitle"></span></h2>
+        <input type="search" id="q" placeholder="Search number, title, year…" oninput="renderList()" dir="auto">
+        <select id="flt" onchange="renderList()" class="hidden" style="width:auto;padding:6px 8px">
+          <option value="">All</option><option value="check">⚠ Check (YML)</option></select>
+        <button class="ghost mini" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="ghost mini hidden" id="syncBtn" onclick="syncNow()" title="YML only">⟳ Sync Dyntechs</button>
+        <span id="syncInfo" class="hidden" style="font-size:.72rem;color:var(--muted)"></span>
+      </div>
+      <div id="kindBar" class="kinds hidden"></div>
+      <div id="sendBar" class="box hidden" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px">
+        <label class="chk" style="margin:0"><input type="checkbox" id="selAll" onchange="selectAll(this.checked)"> Select all</label>
+        <button class="primary" id="sendBtn" onclick="sendSelected()" disabled>Send to YML (0)</button>
+        <span style="font-size:.78rem;color:var(--muted)">Books here are your private list. YML receives them only after you send.</span>
+      </div>
+      <div id="listBox"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <div id="panel-add" class="hidden">
+    <div class="grid">
+      <section class="card">
+        <h2 id="formTitle">New book</h2>
+        <label>Your ref (optional)</label>
+        <input type="text" id="ref" placeholder="row 123 / any marking">
+        <div class="row">
+          <div><label>Work type</label>
+            <select id="level" onchange="toggles()"></select></div>
+          <div id="qtyWrap"><label>Copies</label><input type="number" id="qty" value="1" min="1" max="50"></div>
+        </div>
+        <label>Spine — top line</label>
+        <input type="text" id="t_top" dir="auto" placeholder="Book title" oninput="render()">
+        <label>Spine — middle line</label>
+        <input type="text" id="t_mid" dir="auto" placeholder="Author / subtitle" oninput="render()">
+        <label>Spine — bottom line (place, year)</label>
+        <input type="text" id="t_bot" dir="auto" placeholder="Place, year" oninput="render()">
+        <label>Front cover text</label>
+        <textarea id="t_front" dir="auto" placeholder="Text embossed on the front cover (one line per row)" oninput="render()"></textarea>
+        <label>Name line (embossing)</label>
+        <input type="text" id="t_name" dir="auto" placeholder="e.g. owner's name / dedication" oninput="render()">
+
+
+        <label class="chk"><input type="checkbox" id="isfolder" onchange="prepLevels();toggles()"> Folder binding (choose Level 1–4 above)</label>
+        <div class="box hidden" id="folderbox">
+          <div class="row3">
+            <div><label>Paper width (cm)</label><input type="number" id="paperW" min="0" step="0.1"></div>
+            <div><label>Paper height (cm)</label><input type="number" id="paperH" min="0" step="0.1"></div>
+            <div><label>Plastic sleeves</label><input type="number" id="sleeves" min="0" value="0"></div>
+          </div>
+        </div>
+
+        <input type="checkbox" id="isbox" class="hidden">
+        <div class="box hidden" id="boxbox">
+          <div class="row3">
+            <div><label>Width (cm)</label><input type="number" id="boxW" min="0" step="0.1"></div>
+            <div><label>Height (cm)</label><input type="number" id="boxH" min="0" step="0.1"></div>
+            <div><label>Depth (cm)</label><input type="number" id="boxD" min="0" step="0.1"></div>
+          </div>
+          <label>Box details (optional)</label><input type="text" id="boxnote" dir="auto" placeholder="e.g. box for the whole set">
+        </div>
+
+        <label class="chk" id="setChk"><input type="checkbox" id="isset" onchange="toggles()"> Multi-volume set</label>
+        <div class="box hidden" id="setbox">
+          <div class="row">
+            <div><label>Set name</label><input type="text" id="setname" dir="auto" oninput="render()"></div>
+            <div><label>Number of volumes</label><input type="number" id="vol" value="2" min="1" max="40" oninput="buildVolRows();render()"></div>
+          </div>
+          <div id="setNewOnly">
+            <div style="font-size:.74rem;color:var(--muted);margin-top:8px">The title (spine top) is shared. Fill each volume's middle &amp; bottom line:</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">
+              <label class="chk" style="margin:0;font-size:.82rem"><input type="checkbox" id="samemid" onchange="buildVolRows();render()"> Same middle for all</label>
+              <label class="chk" style="margin:0;font-size:.82rem"><input type="checkbox" id="samebot" onchange="buildVolRows();render()"> Same bottom for all</label>
+            </div>
+            <div id="volrows"></div>
+          </div>
+          <div id="setEditOnly" class="hidden"><label>This volume #</label><input type="number" id="volno" min="1"></div>
+        </div>
+
+        <label>Notes</label>
+        <textarea id="notes" dir="auto"></textarea>
+
+        <div class="btns">
+          <button class="primary" id="saveBtn" onclick="save()">Save</button>
+          <button class="ghost" onclick="showTab(curTab)">Cancel</button>
+        </div>
+        <div class="msg" id="fMsg"></div>
+      </section>
+
+      <section class="card">
+        <h2>Preview</h2>
+        <div class="spines" id="spines"></div>
+        <div class="hint"><b>Final measurements</b> are taken at YML. The font is for illustration only.</div>
+      </section>
+    </div>
+  </div>
+  <div class="foot">YML Leather · Brooklyn NY</div>
+</div>
+</div>
+
+<div id="fixModal" class="modalbg hidden">
+  <div class="card flat" style="max-width:460px;width:100%;max-height:90vh;overflow:auto">
+    <h2>🔁 Send back for fix</h2>
+    <div id="fixBook" dir="auto" style="font-weight:700;margin-bottom:6px"></div>
+    <label>What needs fixing?</label>
+    <div id="fixIssues">
+      <label class="chk"><input type="radio" name="fixIssue" value="wrong_text" onchange="fixUi()"> Wrong text</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="add_text" onchange="fixUi()"> Add text</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="bound_together" onchange="fixUi()"> Two books bound together (I forgot to say)</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="damage" onchange="fixUi()"> Damage / quality problem</label>
+      <label class="chk"><input type="radio" name="fixIssue" value="other" onchange="fixUi()"> Other</label>
+    </div>
+    <div id="fixWhere" class="box hidden">
+      <div style="font-size:.8rem;color:var(--muted)">Where?</div>
+      <label class="chk"><input type="checkbox" value="spine_top"> Spine – top line</label>
+      <label class="chk"><input type="checkbox" value="spine_mid"> Spine – middle line</label>
+      <label class="chk"><input type="checkbox" value="spine_bot"> Spine – bottom line</label>
+      <label class="chk"><input type="checkbox" value="front"> Front cover</label>
+      <label class="chk"><input type="checkbox" value="name"> Name line</label>
+    </div>
+    <label>Details <span id="fixReq" style="color:var(--err)"></span></label>
+    <textarea id="fixNote" dir="auto" placeholder="What should it say / what happened"></textarea>
+    <div class="btns"><button class="primary" id="fixSend" onclick="sendFix()">Send to YML</button><button class="ghost" onclick="closeFix()">Cancel</button></div>
+    <div class="msg" id="fixMsg"></div>
+  </div>
+</div>
+
+<script>
+const sb = supabase.createClient(window.PORTAL_CONFIG.url, window.PORTAL_CONFIG.anonKey);
+const el = id => document.getElementById(id);
+const val = id => (el(id).value || '').trim();
+const esc = s => ('' + (s == null ? '' : s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const num = id => { const v = val(id); return v === '' ? null : Number(v); };
+let profiles = [], profile = null, books = [], editing = null, editingSet = null, volData = [], isStaff = false;
+const CALL_OFFICE = 'To make changes, please call the office';
+const ORDER = { in_work: 0, check: 1 };
+const initialHash = location.hash;
+
+function msg(id, text, ok){ const m = el(id); m.textContent = text || ''; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
+
+/* ---------- auth ---------- */
+async function signIn(){
+  msg('lMsg','');
+  const { error } = await sb.auth.signInWithPassword({ email: val('lEmail'), password: el('lPass').value });
+  if (error) msg('lMsg', 'Sign in failed: ' + error.message);
+}
+async function forgot(){
+  const email = val('lEmail');
+  if (!email) return msg('lMsg', 'Enter your email above first.');
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  msg('lMsg', error ? error.message : 'Check your email for a link to set a new password.', !error);
+}
+function showSetPass(){ show('login'); el('loginForm').classList.add('hidden'); el('setPassForm').classList.remove('hidden'); }
+async function setPass(){
+  const a = el('np1').value, b = el('np2').value;
+  if (a.length < 8) return msg('lMsg', 'At least 8 characters.');
+  if (a !== b) return msg('lMsg', 'The passwords do not match.');
+  const { error } = await sb.auth.updateUser({ password: a });
+  if (error) return msg('lMsg', error.message);
+  history.replaceState(null, '', location.pathname);
+  el('setPassForm').classList.add('hidden'); el('loginForm').classList.remove('hidden');
+  startApp();
+}
+async function signOut(){ await sb.auth.signOut(); location.reload(); }
+function show(v){ el('vLogin').classList.toggle('hidden', v !== 'login'); el('vApp').classList.toggle('hidden', v !== 'app'); }
+
+/* ---------- app ---------- */
+async function startApp(){
+  const { data, error } = await sb.from('profiles').select('*').order('name');
+  if (error) { show('login'); return msg('lMsg', error.message); }
+  profiles = data || [];
+  if (!profiles.length) { show('login'); return msg('lMsg', 'Your account is not linked to a book list yet. Please contact YML.'); }
+  show('app');
+  try { const r = await sb.rpc('am_i_staff'); isStaff = r.data === true; } catch(e) {}
+  el('syncBtn').classList.toggle('hidden', !isStaff); el('syncInfo').classList.toggle('hidden', !isStaff); if (isStaff) showLastSync();
+  const saved = (()=>{ try { return localStorage.getItem('yml_profile'); } catch(e){ return null; } })();
+  profOpts = (isStaff && profiles.length > 1) ? [ALL_PROF].concat(profiles) : profiles;
+  profile = profOpts.find(p => p.id === saved) || profiles[0];
+  const sel = el('profSel');
+  sel.innerHTML = profOpts.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  sel.value = profile.id;
+  const multi = profOpts.length > 1;
+  sel.classList.toggle('hidden', !multi); el('profLbl').classList.toggle('hidden', !multi);
+  el('profOne').textContent = multi ? '' : profile.name;
+  await loadBooks();
+  showTab(books.some(b => bucketOf(b) === 'draft') ? 'draft' : 'work');
+}
+async function switchProfile(){
+  profile = profOpts.find(p => p.id === el('profSel').value);
+  try { localStorage.setItem('yml_profile', profile.id); } catch(e){}
+  selected.clear(); await loadBooks(); showTab('draft');
+}
+async function showLastSync(){
+  try { const { data } = await sb.rpc('last_sync'); const r = data && data[0];
+    el('syncInfo').textContent = r ? 'Last sync ' + new Date(r.started_at).toLocaleString([], {month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}) + (r.ok === false ? ' ⚠ error' : '') : ''; } catch(e) {}
+}
+async function syncNow(){
+  const b = el('syncBtn'); b.disabled = true; b.textContent = '⟳ Syncing…';
+  const { error } = await sb.rpc('sync_now');
+  if (error) { alert('Sync failed: ' + error.message); b.disabled = false; b.textContent = '⟳ Sync Dyntechs'; return; }
+  setTimeout(async () => { await loadBooks(); await showLastSync(); b.disabled = false; b.textContent = '⟳ Sync Dyntechs'; }, 12000);
+}
+async function loadBooks(){
+  el('custName').textContent = profile.name;
+  const isAll = profile.id === ALL_PROF.id;
+  el('tab-add').classList.toggle('hidden', isAll);
+  el('listBox').innerHTML = '<div class="empty">Loading…</div>';
+  let all = [], from = 0;
+  while (true) {
+    let qb = sb.from('books').select('*'); if (!isAll) qb = qb.eq('profile_id', profile.id);
+    const { data, error } = await qb
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, from + 999);
+    if (error) { el('listBox').innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
+    all = all.concat(data); if (data.length < 1000) break; from += 1000;
+  }
+  all.sort((a, b) => (ORDER[a.hist_status] ?? 9) - (ORDER[b.hist_status] ?? 9));
+  let fq = sb.from('fix_requests').select('book_id,issue,status,created_at'); if (!isAll) fq = fq.eq('profile_id', profile.id);
+  const fr = await fq.in('status', ['open','accepted']);
+  fixOpen = {}; (fr.data || []).forEach(r => fixOpen[r.book_id] = r);
+  books = all; renderList();
+}
+
+let curTab = 'draft', fixOpen = {}, fixBookId = null, curKind = '', profOpts = [];
+const ALL_PROF = { id: '__all', name: 'All customers (YML)', show_extras: true };
+const KINDS = [['','All'],['bind','Bindings'],['half','Half leather'],['stk','Stickers']];
+function kindOf(b){ return (b.level === 'Half leather' || b.half_leather) ? 'half' : (b.level === 'Stickers' || b.stickers) ? 'stk' : 'bind'; }
+function setKind(k){ curKind = k; renderList(); }
+const ISSUE = { wrong_text: 'Wrong text', add_text: 'Add text', bound_together: 'Two books bound together', damage: 'Damage / quality', other: 'Other' };
+function openFix(id){ const b = books.find(x => x.id === id); fixBookId = id;
+  el('fixBook').textContent = (b.book_no ? b.book_no + ' · ' : '') + (b.spine_top || b.spine_mid || 'Book') + (b.spine_bot ? ' · ' + b.spine_bot : '');
+  document.querySelectorAll('#fixModal input').forEach(i => i.checked = false); el('fixNote').value = ''; msg('fixMsg', ''); fixUi();
+  el('fixModal').classList.remove('hidden'); }
+function closeFix(){ el('fixModal').classList.add('hidden'); fixBookId = null; }
+function fixIssue(){ const r = document.querySelector('input[name=fixIssue]:checked'); return r ? r.value : ''; }
+function fixUi(){ const i = fixIssue(); el('fixWhere').classList.toggle('hidden', !(i === 'wrong_text' || i === 'add_text'));
+  el('fixReq').textContent = (i === 'other' || i === 'damage' || i === 'wrong_text' || i === 'add_text') ? '(required)' : ''; }
+async function sendFix(){
+  const issue = fixIssue(), note = val('fixNote');
+  const where = [...document.querySelectorAll('#fixWhere input:checked')].map(i => i.value);
+  if (!issue) return msg('fixMsg', 'Please choose what needs fixing.');
+  if ((issue === 'wrong_text' || issue === 'add_text') && !where.length) return msg('fixMsg', 'Please choose where.');
+  if (el('fixReq').textContent && !note) return msg('fixMsg', 'Please add details.');
+  el('fixSend').disabled = true;
+  const { error } = await sb.from('fix_requests').insert({ book_id: fixBookId, profile_id: profile.id, issue, where_parts: where, note: note || null });
+  el('fixSend').disabled = false;
+  if (error) return msg('fixMsg', 'Could not send: ' + error.message);
+  closeFix(); await loadBooks();
+}
+const selected = new Set();
+const TITLES = { draft: 'to send', work: 'in work at YML', hist: 'history' };
+// which list a book belongs to
+function bucketOf(b){
+  if (b.hist_status === 'done' || (b.origin === 'sheet' && b.hist_status !== 'in_work')) return 'hist';
+  if (b.origin === 'portal' && !b.sent) return 'draft';
+  return 'work';
+}
+function showTab(t){
+  if (t !== 'add') curTab = t;
+  ['draft','work','hist','add'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
+  el('panel-list').classList.toggle('hidden', t === 'add'); el('panel-add').classList.toggle('hidden', t !== 'add');
+  if (t !== 'add') renderList();
+}
+function selectAll(on){ books.filter(b => bucketOf(b) === 'draft').forEach(b => on ? selected.add(b.id) : selected.delete(b.id)); renderList(); }
+function toggleSel(id, on){ on ? selected.add(id) : selected.delete(id); updSend(); }
+function updSend(){ const n = [...selected].filter(id => books.some(b => b.id === id && bucketOf(b) === 'draft')).length;
+  el('sendBtn').textContent = `Send to YML (${n})`; el('sendBtn').disabled = !n; }
+async function sendSelected(){
+  const ids = [...selected].filter(id => books.some(b => b.id === id && bucketOf(b) === 'draft'));
+  if (!ids.length) return;
+  if (!confirm(`Send ${ids.length} book(s) to YML?`)) return;
+  el('sendBtn').disabled = true;
+  const { error } = await sb.from('books').update({ sent: true }).in('id', ids);
+  if (error) { alert('Could not send: ' + error.message); updSend(); return; }
+  selected.clear(); await loadBooks(); showTab('work');
+}
+
+function renderList(){
+  const q = val('q').toLowerCase(), f = el('flt').value;
+  const counts = { draft: 0, work: 0, hist: 0 };
+  books.forEach(b => counts[bucketOf(b)]++);
+  Object.keys(counts).forEach(k => el('cnt-' + k).textContent = counts[k]);
+  el('listTitle').textContent = TITLES[curTab];
+  el('sendBar').classList.toggle('hidden', curTab !== 'draft' || !counts.draft);
+  el('flt').classList.toggle('hidden', !(isStaff && curTab === 'hist'));
+  const inTab = books.filter(b => bucketOf(b) === curTab), kc = { '': inTab.length, bind: 0, half: 0, stk: 0 };
+  inTab.forEach(b => kc[kindOf(b)]++);
+  const showK = !!(profile && profile.show_extras) && (kc.half || kc.stk);
+  el('kindBar').classList.toggle('hidden', !showK);
+  if (!showK) curKind = '';
+  el('kindBar').innerHTML = KINDS.map(([k, l]) => `<span class="kind${curKind === k ? ' on' : ''}" onclick="setKind('${k}')">${l}<span class="n">${kc[k]}</span></span>`).join('');
+  const rows = books.filter(b => {
+    if (bucketOf(b) !== curTab) return false;
+    if (curKind && kindOf(b) !== curKind) return false;
+    if (curTab === 'hist' && f === 'check' && b.hist_status !== 'check') return false;
+    if (!q) return true;
+    return [b.book_no,b.spine_top,b.spine_mid,b.spine_bot,b.front_text,b.name_line,b.ref,b.set_name,b.notes].join(' ').toLowerCase().includes(q);
+  });
+  updSend();
+  const EMPTY = { draft: 'Nothing waiting to send. Click “＋ Add Book” to start your list.', work: 'Nothing in work right now.', hist: 'No history yet.' };
+  if (!rows.length) { el('listBox').innerHTML = `<div class="empty">${counts[curTab] ? 'Nothing matches.' : EMPTY[curTab]}</div>`; return; }
+  const shown = rows.slice(0, 500);
+  el('listBox').innerHTML = '<table><thead><tr>' + (curTab === 'draft' ? '<th></th>' : '') + '<th>Book</th><th></th></tr></thead><tbody>' + shown.map(b => {
+    const t = [];
+    if (profile.id === ALL_PROF.id) { const pp = profiles.find(x => x.id === b.profile_id); t.push(`<span class="tag staff">${esc(pp ? pp.name : '')}</span>`); }
+    const grp = b.set_name && b.origin === 'portal' ? setGroup(b) : null;
+    const canEdit = curTab !== 'hist' && (grp ? setEditable(grp) : (b.origin === 'portal' && !b.locked));
+    if (curTab === 'work') t.push(canEdit ? '<span class="tag lock">Sent · editable</span>' : '<span class="tag lock">🔒 In work · ' + CALL_OFFICE + '</span>');
+    else if (curTab === 'draft' && !canEdit) t.push('<span class="tag lock">🔒 ' + CALL_OFFICE + '</span>');
+    else if (curTab === 'hist' && b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
+    if (fixOpen[b.id]) t.push(`<span class="tag fix">🔁 Fix requested: ${esc(ISSUE[fixOpen[b.id].issue] || '')}</span>`);
+    if (isStaff && b.hist_detail) t.push(`<span class="tag staff">YML: ${esc(b.hist_detail)}</span>`);
+    if (b.ref) t.push(`<span class="tag">Ref ${esc(b.ref)}</span>`);
+    if (b.spine_bot) t.push(`<span class="tag" dir="auto">${esc(b.spine_bot)}</span>`);
+    if (b.front_text) t.push(`<span class="tag" dir="auto">Front: ${esc(b.front_text.replace(/\n/g,' / '))}</span>`);
+    if (b.name_line) t.push(`<span class="tag" dir="auto">Name: ${esc(b.name_line)}</span>`);
+    if (b.level) t.push(`<span class="tag">${esc(b.level === 'Box' ? 'Box (quote)' : b.level)}</span>`);
+    if (b.set_name) t.push(`<span class="tag" dir="auto">Set: ${esc(b.set_name)}${b.vol ? ' · Vol ' + b.vol + (b.vol_total ? '/' + b.vol_total : '') : ''}</span>`);
+    if (b.is_folder) t.push(`<span class="tag">Folder${b.paper_w||b.paper_h ? ' ' + (b.paper_w||'?') + '×' + (b.paper_h||'?') + ' cm' : ''}${b.sleeves ? ' · ' + b.sleeves + ' sleeves' : ''}</span>`);
+    if (b.is_box) t.push(`<span class="tag">Box${[b.box_w,b.box_h,b.box_d].some(x=>x) ? ' ' + [b.box_w,b.box_h,b.box_d].map(x=>x||'?').join('×') + ' cm' : ''}${b.box_note ? ' · ' + esc(b.box_note) : ''}</span>`);
+    if (b.half_leather && b.level !== 'Half leather') t.push('<span class="tag">Half leather</span>');
+    if (b.stickers && b.level !== 'Stickers') t.push('<span class="tag">Stickers</span>');
+    const title = b.spine_top || b.spine_mid || (b.is_folder ? 'Folder' : b.is_box ? 'Box' : '—');
+    const canDel = curTab === 'draft';
+    return `<tr>${curTab === 'draft' ? `<td style="width:28px"><input type="checkbox" ${selected.has(b.id) ? 'checked' : ''} onchange="toggleSel(${b.id},this.checked)"></td>` : ''}<td>${b.book_no ? `<span class="bno">${esc(b.book_no)}</span> ` : (curTab==='work' ? '<span class="bno pend">No. pending</span> ' : '')}<b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
+      + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
+      + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
+      + (canEdit ? ` <button class="mini ghost" onclick="${grp ? 'editSet' : 'editBook'}(${b.id})">${grp ? 'Edit set' : 'Edit'}</button>` : '')
+      + (curTab === 'hist' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
+      + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
+  }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
+}
+
+/* ---------- form ---------- */
+function toggles(){
+  el('folderbox').classList.toggle('hidden', !el('isfolder').checked);
+  el('isbox').checked = el('level').value === 'Box';
+  el('boxbox').classList.toggle('hidden', !el('isbox').checked);
+  el('setbox').classList.toggle('hidden', !el('isset').checked);
+  el('setNewOnly').classList.toggle('hidden', !!editing); el('setEditOnly').classList.toggle('hidden', !editing);
+  buildVolRows(); render();
+}
+function buildVolRows(){
+  const cont = el('volrows');
+  if (!el('isset').checked || editing) { cont.innerHTML = ''; return; }
+  let n = Math.min(Math.max(parseInt(val('vol'),10) || 1, 1), 40);
+  while (volData.length < n) volData.push({ mid: '', bot: '' }); volData.length = n;
+  const sm = el('samemid').checked, sbt = el('samebot').checked;
+  let html = '';
+  if (sm) html += `<input type="text" id="sharedmid" dir="auto" placeholder="Middle line — all volumes" style="margin-top:6px" oninput="render()" value="${esc(window._smid||'')}">`;
+  if (sbt) html += `<input type="text" id="sharedbot" dir="auto" placeholder="Bottom line — all volumes" style="margin-top:6px" oninput="render()" value="${esc(window._sbot||'')}">`;
+  if (!(sm && sbt)) {
+    const cols = ['46px'].concat(sm ? [] : ['1fr']).concat(sbt ? [] : ['1fr']).join(' ');
+    for (let v = 0; v < n; v++) html += `<div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;margin-top:6px">
+      <span style="font-size:.78rem;color:var(--muted);font-weight:700">Vol ${v+1}</span>
+      ${sm ? '' : `<input type="text" dir="auto" placeholder="middle" value="${esc(volData[v].mid)}" oninput="volData[${v}].mid=this.value;render()">`}
+      ${sbt ? '' : `<input type="text" dir="auto" placeholder="bottom (place, year)" value="${esc(volData[v].bot)}" oninput="volData[${v}].bot=this.value;render()">`}</div>`;
+  }
+  cont.innerHTML = html;
+}
+function sharedMid(){ const e = el('sharedmid'); if (e) window._smid = e.value; return e ? e.value.trim() : ''; }
+function sharedBot(){ const e = el('sharedbot'); if (e) window._sbot = e.value; return e ? e.value.trim() : ''; }
+
+function frontHtml(front, name){
+  const lines = (front||'').split('\n').filter(l => l.trim());
+  const inner = lines.length ? lines.map(l => `<div>${esc(l)}</div>`).join('') : '<span class="ph">Front text</span>';
+  const np = name ? `<div style="margin-top:12px;font-size:.9rem;border-top:1px solid rgba(217,183,121,.45);padding-top:8px">${esc(name)}</div>` : '';
+  return `<div><div class="front" dir="auto">${inner}${np}</div><div class="cap">Front cover</div></div>`;
+}
+function spineHtml(top, mid, bot, cap, small){
+  const w = small ? 84 : 110, h = small ? 300 : 330, tl = (top||'').length;
+  const fs = tl > 14 ? '.85rem' : tl > 8 ? '1rem' : (small ? '1.05rem' : '1.25rem');
+  return `<div><div class="spine" style="width:${w}px;height:${h}px">
+    <div class="band b-top" dir="auto" style="font-size:${fs}">${esc(top || 'Book title')}</div><div class="rule"></div>
+    <div class="band b-mid" dir="auto">${esc(mid||'')}</div><div class="rule"></div>
+    <div class="band b-bot" dir="auto">${esc(bot||'')}</div></div>${cap ? `<div class="cap">${esc(cap)}</div>` : ''}</div>`;
+}
+function render(){
+  const top = val('t_top') || (el('isset').checked ? val('setname') : '');
+  let html = frontHtml(val('t_front'), val('t_name'));
+  if (el('isset').checked && !editing) {
+    const n = Math.min(Math.max(parseInt(val('vol'),10) || 1, 1), 40), small = n > 3;
+    const sm = el('samemid').checked, sbt = el('samebot').checked;
+    for (let v = 0; v < Math.min(n, 12); v++) {
+      const d = volData[v] || {};
+      html += spineHtml(top, (sm ? sharedMid() : d.mid) || val('t_mid'), (sbt ? sharedBot() : d.bot) || val('t_bot'), 'Vol ' + (v+1), small);
+    }
+  } else html += spineHtml(top, val('t_mid'), val('t_bot'), editing && el('isset').checked ? 'Vol ' + val('volno') : '', false);
+  el('spines').innerHTML = html;
+}
+
+function clearForm(){
+  ['ref','t_top','t_mid','t_bot','t_front','t_name','setname','notes','paperW','paperH','boxW','boxH','boxD','boxnote','volno'].forEach(id => el(id).value = '');
+  ['isfolder','isbox','isset','samemid','samebot'].forEach(id => el(id).checked = false);
+  el('level').value = 'Level 2'; el('qty').value = '1'; el('vol').value = '2'; el('sleeves').value = '0';
+  volData = []; window._smid = ''; window._sbot = ''; msg('fMsg', '');
+}
+function prepLevels(){
+  const cur = el('level').dataset.want || el('level').value || 'Level 2'; el('level').dataset.want = '';
+  const folder = el('isfolder').checked;
+  const opts = ['Level 1','Level 2','Level 3','Level 4'].concat(folder ? [] : (profile.show_extras ? ['Half leather','Stickers'] : []).concat(['New spine','Box']));
+  const LBL = { 'Box': 'Box – price by quote' };
+  el('level').innerHTML = opts.map(o => `<option value="${o}">${LBL[o] || o}</option>`).join('');
+  el('level').value = opts.includes(cur) ? cur : 'Level 2';
+}
+function prepForm(){
+  prepLevels();
+  el('qtyWrap').classList.toggle('hidden', !!(editing || editingSet));
+  el('formTitle').textContent = editingSet ? 'Edit set · ' + editingSet[0].set_name : editing ? 'Edit book' : 'New book';
+  el('saveBtn').textContent = (editing || editingSet) ? 'Save changes' : 'Save to “To send”';
+  toggles(); showTab('add'); window.scrollTo(0, 0);
+}
+function newBook(){ editing = null; editingSet = null; clearForm(); prepForm(); }
+/* a set = same customer, same set name, same number of volumes, same stage */
+function setGroup(b){
+  return books.filter(x => x.origin === 'portal' && x.profile_id === b.profile_id && x.set_name === b.set_name
+    && (x.vol_total || 0) === (b.vol_total || 0) && !!x.sent === !!b.sent && bucketOf(x) === bucketOf(b))
+    .sort((a, c) => (a.vol || 0) - (c.vol || 0) || a.id - c.id);
+}
+/* a set can be edited until YML received it (no book number yet, not locked) */
+function setEditable(g){ return g.length > 0 && g.every(x => x.origin === 'portal' && !x.locked && !x.book_no); }
+function editSet(id){
+  const b = books.find(x => x.id === id), g = setGroup(b);
+  if (!setEditable(g)) return alert(CALL_OFFICE);
+  editing = null; clearForm(); fill(g[0]); editingSet = g;
+  el('isset').checked = true; el('vol').value = g.length;
+  el('t_mid').value = ''; el('t_bot').value = '';
+  if (g[0].spine_top === g[0].set_name) el('t_top').value = '';
+  volData = g.map(x => ({ mid: x.spine_mid || '', bot: x.spine_bot || '' }));
+  prepForm();
+}
+function fill(b){
+  el('ref').value = b.ref||''; el('t_top').value = b.spine_top||''; el('t_mid').value = b.spine_mid||''; el('t_bot').value = b.spine_bot||'';
+  el('t_front').value = b.front_text||''; el('t_name').value = b.name_line||'';
+  el('level').innerHTML = '<option></option>'; el('level').value = '';
+  el('level').dataset.want = b.half_leather ? 'Half leather' : b.stickers ? 'Stickers' : b.is_box && !b.level ? 'Box' : (b.level || 'Level 2');
+  el('isfolder').checked = !!b.is_folder; el('paperW').value = b.paper_w ?? ''; el('paperH').value = b.paper_h ?? ''; el('sleeves').value = b.sleeves ?? '0';
+  el('isbox').checked = !!b.is_box; el('boxW').value = b.box_w ?? ''; el('boxH').value = b.box_h ?? ''; el('boxD').value = b.box_d ?? ''; el('boxnote').value = b.box_note||'';
+  el('isset').checked = !!b.set_name; el('setname').value = b.set_name||''; el('vol').value = b.vol_total || 2; el('volno').value = b.vol || '';
+  el('notes').value = b.notes||'';
+}
+function editBook(id){ const b = books.find(x => x.id === id); editingSet = null; editing = b; clearForm(); fill(b); prepForm(); }
+function reorder(id){ const b = books.find(x => x.id === id); editing = null; editingSet = null; clearForm(); fill(b); el('isset').checked = false; el('setname').value = ''; prepForm(); }
+
+function rowFromForm(){
+  return {
+    profile_id: profile.id, ref: val('ref') || null,
+    spine_top: val('t_top') || null, spine_mid: val('t_mid') || null, spine_bot: val('t_bot') || null,
+    front_text: val('t_front') || null, name_line: val('t_name') || null, level: val('level') || null,
+    half_leather: val('level') === 'Half leather', stickers: val('level') === 'Stickers',
+    is_folder: el('isfolder').checked, paper_w: el('isfolder').checked ? num('paperW') : null, paper_h: el('isfolder').checked ? num('paperH') : null,
+    sleeves: el('isfolder').checked ? num('sleeves') : null,
+    is_box: el('isbox').checked, box_w: el('isbox').checked ? num('boxW') : null, box_h: el('isbox').checked ? num('boxH') : null,
+    box_d: el('isbox').checked ? num('boxD') : null, box_note: el('isbox').checked ? (val('boxnote') || null) : null,
+    set_name: el('isset').checked ? (val('setname') || null) : null, notes: val('notes') || null
+  };
+}
+async function save(){
+  const r = rowFromForm();
+  if (!r.spine_top && !r.spine_mid && !r.front_text && !r.name_line && !r.is_folder && !r.is_box && !r.set_name)
+    return msg('fMsg', 'Please enter the embossing text (or mark Folder / Box).');
+  if (el('isset').checked && !r.set_name) return msg('fMsg', 'Please enter the set name.');
+  el('saveBtn').disabled = true; msg('fMsg', 'Saving…', true);
+  let error;
+  if (editingSet) {
+    const g = editingSet, n = Math.min(Math.max(parseInt(val('vol'),10) || 1, 1), 40), sm = el('samemid').checked, sbt = el('samebot').checked;
+    if (!r.set_name) { el('saveBtn').disabled = false; return msg('fMsg', 'Please enter the set name.'); }
+    if (n < g.length && g.some(x => x.sent)) { el('saveBtn').disabled = false; return msg('fMsg', 'To remove volumes from a set that was already sent, please call the office.'); }
+    if (!r.spine_top) r.spine_top = r.set_name;
+    delete r.profile_id;
+    for (let v = 1; v <= n && !error; v++) {
+      const d = volData[v-1] || {};
+      const row = { ...r, vol: v, vol_total: n, spine_mid: (sm ? sharedMid() : (d.mid||'').trim()) || r.spine_mid || null, spine_bot: (sbt ? sharedBot() : (d.bot||'').trim()) || r.spine_bot || null };
+      if (v <= g.length) ({ error } = await sb.from('books').update(row).eq('id', g[v-1].id));
+      else ({ error } = await sb.from('books').insert({ ...row, profile_id: g[0].profile_id, sent: !!g[0].sent }));
+    }
+    if (!error && n < g.length) ({ error } = await sb.from('books').delete().in('id', g.slice(n).map(x => x.id)));
+    el('saveBtn').disabled = false;
+    if (error) return msg('fMsg', 'Could not save: ' + error.message);
+    editingSet = null; clearForm(); await loadBooks(); showTab(curTab);
+    return;
+  }
+  if (editing) {
+    if (r.set_name) { r.vol = num('volno'); }
+    else { r.vol = null; r.vol_total = null; }
+    delete r.profile_id;
+    ({ error } = await sb.from('books').update(r).eq('id', editing.id));
+  } else {
+    let rows = [];
+    if (r.set_name) {
+      const n = Math.min(Math.max(parseInt(val('vol'),10) || 1, 1), 40), sm = el('samemid').checked, sbt = el('samebot').checked;
+      if (!r.spine_top) r.spine_top = r.set_name;
+      for (let v = 1; v <= n; v++) { const d = volData[v-1] || {};
+        rows.push({ ...r, vol: v, vol_total: n, spine_mid: (sm ? sharedMid() : (d.mid||'').trim()) || r.spine_mid || null, spine_bot: (sbt ? sharedBot() : (d.bot||'').trim()) || r.spine_bot || null }); }
+    } else {
+      const q = Math.min(Math.max(parseInt(val('qty'),10) || 1, 1), 50);
+      for (let i = 0; i < q; i++) rows.push({ ...r });
+    }
+    ({ error } = await sb.from('books').insert(rows));
+  }
+  el('saveBtn').disabled = false;
+  if (error) return msg('fMsg', 'Could not save: ' + error.message);
+  const wasEdit = !!editing; editing = null; clearForm(); await loadBooks(); showTab(wasEdit ? curTab : 'draft');
+}
+async function delBook(id){
+  const b = books.find(x => x.id === id);
+  if (!confirm('Delete "' + (b.spine_top || b.spine_mid || 'this book') + '"?')) return;
+  const { error } = await sb.from('books').delete().eq('id', id);
+  if (error) return alert(error.message);
+  await loadBooks();
+}
+function exportCSV(){
+  const cols = ['origin','ref','spine_top','spine_mid','spine_bot','front_text','name_line','level','set_name','vol','vol_total','is_folder','paper_w','paper_h','sleeves','is_box','box_w','box_h','box_d','box_note','half_leather','stickers','notes','created_at'];
+  const lines = books.map(b => cols.map(c => '"' + ('' + (b[c] == null ? '' : b[c])).replace(/"/g, '""') + '"').join(','));
+  const blob = new Blob(['﻿' + cols.join(',') + '\n' + lines.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = profile.name.replace(/\W+/g, '_') + '-books.csv'; a.click();
+}
+
+/* ---------- boot ---------- */
+(async () => {
+  const isInvite = /type=(invite|recovery|signup)/.test(initialHash);
+  sb.auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') showSetPass(); });
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && isInvite) return showSetPass();
+  if (session) return startApp();
+  show('login');
+  sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' && !/type=(invite|recovery)/.test(initialHash)) startApp(); });
+})();
+</script>
+</body>
+</html>
