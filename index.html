@@ -356,11 +356,13 @@ async function loadBooks(){
     if (error) { el('listBox').innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
     all = all.concat(data); if (data.length < 1000) break; from += 1000;
   }
-  /* newest received on top: sent_at for portal books, else created_at; sets in volume order; History: ⚠ Check first */
-  const recv = x => x.sent_at || x.created_at || '';
+  /* In work: newest received on top (Dyntechs received date, else time sent from the portal; no date = bottom).
+     History: ⚠ Check first, then newest. Sets stay together in volume order. */
+  const recv = x => bucketOf(x) === 'hist' ? (x.created_at || '') : (x.received_on || x.sent_at || '');
   all.sort((a, b) => ((a.hist_status === 'check') - (b.hist_status === 'check')) * -1
     || (recv(a) < recv(b) ? 1 : recv(a) > recv(b) ? -1 : 0)
-    || (a.set_name && a.set_name === b.set_name ? (a.vol || 0) - (b.vol || 0) : b.id - a.id));
+    || (a.set_name && a.set_name === b.set_name ? (a.vol || 0) - (b.vol || 0)
+        : (b.book_no || '').localeCompare(a.book_no || '', undefined, { numeric: true }) || b.id - a.id));
   let fq = sb.from('fix_requests').select('book_id,issue,status,created_at'); if (!isAll) fq = fq.eq('profile_id', profile.id);
   const fr = await fq.in('status', ['open','accepted']);
   fixOpen = {}; (fr.data || []).forEach(r => fixOpen[r.book_id] = r);
