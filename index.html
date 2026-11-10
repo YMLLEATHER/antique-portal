@@ -241,7 +241,7 @@
 
         <div class="btns">
           <button class="primary" id="saveBtn" onclick="save()">Save</button>
-          <button class="ghost" onclick="showTab(curTab)">Cancel</button>
+          <button class="ghost" onclick="cancelForm()">Cancel</button>
         </div>
         <div class="msg" id="fMsg"></div>
       </section>
@@ -354,11 +354,14 @@ async function startApp(){
   el('profOne').textContent = multi ? '' : profile.name;
   await loadBooks();
   showTab(books.some(b => bucketOf(b) === 'draft') ? 'draft' : 'work');
+  el('panel-add').addEventListener('input', onFormInput); el('panel-add').addEventListener('change', onFormInput);
+  updDraftMark();
 }
 async function switchProfile(){
+  snapDraft(); editing = null; editingSet = null; clearForm();   // each book list keeps its own unfinished book
   profile = profOpts.find(p => p.id === el('profSel').value);
   try { localStorage.setItem('yml_profile', profile.id); } catch(e){}
-  selected.clear(); await loadBooks(); showTab('draft');
+  selected.clear(); await loadBooks(); showTab('draft'); updDraftMark();
 }
 async function showLastSync(){
   try { const { data } = await sb.rpc('last_sync'); const r = data && data[0];
@@ -433,7 +436,7 @@ function bucketOf(b){
 function showTab(t){
   if (t === 'fix') { ['draft','work','hist','add','fix'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
     ['list','add'].forEach(x => el('panel-' + x).classList.add('hidden')); el('panel-fix').classList.remove('hidden'); loadFixes(); return; }
-  if (t !== 'add') curTab = t;
+  if (t !== 'add') { curTab = t; snapDraft(); }
   ['draft','work','hist','add','fix'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
   el('panel-fix').classList.add('hidden');
   el('panel-list').classList.toggle('hidden', t === 'add'); el('panel-add').classList.toggle('hidden', t !== 'add');
@@ -635,7 +638,7 @@ function clearForm(){
   ['ref','t_top','t_mid','t_bot','t_front','t_name','setname','notes','paperW','paperH','boxW','boxH','boxD','boxnote','volno'].forEach(id => el(id).value = '');
   ['isfolder','isbox','isset','samemid','samebot'].forEach(id => el(id).checked = false);
   el('level').value = 'Level 2'; el('qty').value = '1'; el('vol').value = '2'; el('sleeves').value = '0';
-  volData = []; window._smid = ''; window._sbot = ''; msg('fMsg', '');
+  volData = []; window._smid = ''; window._sbot = ''; msg('fMsg', ''); formDirty = false;
 }
 function prepLevels(){
   const cur = el('level').dataset.want || el('level').value || 'Level 2'; el('level').dataset.want = '';
@@ -652,7 +655,43 @@ function prepForm(){
   el('saveBtn').textContent = (editing || editingSet) ? 'Save changes' : 'Save to “To send”';
   toggles(); showTab('add'); window.scrollTo(0, 0);
 }
-function newBook(){ editing = null; editingSet = null; clearForm(); prepForm(); }
+/* Unfinished new book stays until Cancel or Save (kept per book list, also after closing the page) */
+const DRAFT_F = ['ref','t_top','t_mid','t_bot','t_front','t_name','setname','notes','paperW','paperH','boxW','boxH','boxD','boxnote','volno','level','qty','vol','sleeves'];
+const DRAFT_C = ['isfolder','isbox','isset','samemid','samebot'];
+let formDirty = false, draftT = null; const memDraft = {};
+const dKey = () => 'yml_draft_' + (profile ? profile.id : '');
+function dGet(){ let s = null; try { s = localStorage.getItem(dKey()); } catch(e) {} if (s == null) s = memDraft[dKey()] || null; try { return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+function dSet(s){ memDraft[dKey()] = s; try { s == null ? localStorage.removeItem(dKey()) : localStorage.setItem(dKey(), s); } catch(e) {} }
+function onFormInput(){ if (editing || editingSet) return; formDirty = true; clearTimeout(draftT); draftT = setTimeout(snapDraft, 400); }
+function snapDraft(){
+  clearTimeout(draftT);
+  if (editing || editingSet || !formDirty || !profile) return;
+  sharedMid(); sharedBot();
+  const d = { v: {}, c: {}, volData, smid: window._smid || '', sbot: window._sbot || '' };
+  DRAFT_F.forEach(i => d.v[i] = el(i).value); DRAFT_C.forEach(i => d.c[i] = el(i).checked);
+  dSet(JSON.stringify(d)); updDraftMark();
+}
+function dropDraft(){ formDirty = false; clearTimeout(draftT); dSet(null); updDraftMark(); }
+function loadDraft(){
+  const d = dGet(); if (!d) return false;
+  clearForm();
+  DRAFT_F.forEach(i => { if (i === 'level') el('level').dataset.want = d.v.level || ''; else if (d.v[i] != null) el(i).value = d.v[i]; });
+  DRAFT_C.forEach(i => el(i).checked = !!d.c[i]);
+  volData = d.volData || []; window._smid = d.smid || ''; window._sbot = d.sbot || ''; formDirty = true;
+  return true;
+}
+function updDraftMark(){ const has = !!dGet(); el('tab-add').innerHTML = '＋ Add Book' + (has ? ' <span class="count" title="Unfinished book — not saved yet">✎</span>' : ''); }
+function cancelForm(){
+  if (!editing && !editingSet && formDirty && !confirm('Discard this book? What you typed will be deleted.')) return;
+  if (!editing && !editingSet) dropDraft();
+  editing = null; editingSet = null; clearForm(); showTab(curTab);
+}
+function newBook(){
+  if (formDirty && !editing && !editingSet) { showTab('add'); return; }   // still on screen — just go back to it
+  snapDraft(); editing = null; editingSet = null;
+  if (!loadDraft()) clearForm();
+  prepForm();
+}
 /* a set = same customer, same set name, same number of volumes, same stage */
 function setGroup(b){
   return books.filter(x => x.origin === 'portal' && x.profile_id === b.profile_id && x.set_name === b.set_name
@@ -664,7 +703,7 @@ function setEditable(g){ return g.length > 0 && g.every(x => x.origin === 'porta
 function editSet(id){
   const b = books.find(x => x.id === id), g = setGroup(b);
   if (!setEditable(g)) return alert(CALL_OFFICE);
-  editing = null; clearForm(); fill(g[0]); editingSet = g;
+  snapDraft(); editing = null; clearForm(); fill(g[0]); editingSet = g;
   el('isset').checked = true; el('vol').value = g.length;
   el('t_mid').value = ''; el('t_bot').value = '';
   if (g[0].spine_top === g[0].set_name) el('t_top').value = '';
@@ -681,8 +720,8 @@ function fill(b){
   el('isset').checked = !!b.set_name; el('setname').value = b.set_name||''; el('vol').value = b.vol_total || 2; el('volno').value = b.vol || '';
   el('notes').value = b.notes||'';
 }
-function editBook(id){ const b = books.find(x => x.id === id); editingSet = null; editing = b; clearForm(); fill(b); prepForm(); }
-function reorder(id){ const b = books.find(x => x.id === id); editing = null; editingSet = null; clearForm(); fill(b); el('isset').checked = false; el('setname').value = ''; prepForm(); }
+function editBook(id){ snapDraft(); const b = books.find(x => x.id === id); editingSet = null; editing = b; clearForm(); fill(b); prepForm(); }
+function reorder(id){ snapDraft(); const b = books.find(x => x.id === id); editing = null; editingSet = null; clearForm(); fill(b); el('isset').checked = false; el('setname').value = ''; formDirty = true; prepForm(); }
 
 function rowFromForm(){
   return {
@@ -742,7 +781,7 @@ async function save(){
   }
   el('saveBtn').disabled = false;
   if (error) return msg('fMsg', 'Could not save: ' + error.message);
-  const wasEdit = !!editing; editing = null; clearForm(); await loadBooks(); showTab(wasEdit ? curTab : 'draft');
+  const wasEdit = !!editing; if (!wasEdit) dropDraft(); editing = null; clearForm(); await loadBooks(); showTab(wasEdit ? curTab : 'draft');
 }
 async function delBook(id){
   const b = books.find(x => x.id === id);
