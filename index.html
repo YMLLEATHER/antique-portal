@@ -92,6 +92,14 @@
   .kinds{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
   .kind{border:1px solid var(--line,#ddd);background:#fff;border-radius:999px;padding:4px 12px;font-size:.8rem;cursor:pointer;color:var(--accent)}
   .kind.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .fx{border:1px solid var(--line,#e5ddd0);border-radius:10px;padding:10px 12px;margin:0 0 10px;background:#fff}
+  .fx .hd{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.82rem;color:var(--muted)}
+  .fx .rq{margin:6px 0;font-size:.9rem}
+  .fx .ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .fx .ctl select{width:auto;padding:6px 8px}
+  .fx textarea{min-height:44px;margin:6px 0}
+  .st{display:inline-block;border-radius:6px;padding:1px 8px;font-size:.74rem;font-weight:700}
+  .st.open{background:#fdf0d9;color:#8a5a12}.st.accepted{background:#e6f0fb;color:#2f5f8a}.st.done{background:#e3f3e6;color:#2d6a3a}.st.rejected{background:#f6e1e1;color:#8a2f2f}
   .kind .n{opacity:.7;margin-left:4px;font-size:.72rem}
   .foot{text-align:center;color:var(--muted);font-size:.74rem;padding-top:12px}
 </style>
@@ -136,10 +144,18 @@
   <div class="tab active" id="tab-draft" onclick="showTab('draft')">To send <span class="count" id="cnt-draft">0</span></div>
   <div class="tab" id="tab-work" onclick="showTab('work')">In work <span class="count" id="cnt-work">0</span></div>
   <div class="tab" id="tab-hist" onclick="showTab('hist')">History <span class="count" id="cnt-hist">0</span></div>
+  <div class="tab hidden" id="tab-fix" onclick="showTab('fix')">🔁 Fix requests <span class="count" id="cnt-fix">0</span></div>
   <div class="tab" id="tab-add" onclick="newBook()">＋ Add Book</div>
 </div>
 
 <div class="wrap">
+  <div id="panel-fix" class="hidden">
+    <div class="card flat">
+      <div class="bar"><h2 style="margin:0">🔁 Fix requests · YML</h2><button class="ghost mini" onclick="loadFixes()">⟳ Refresh</button></div>
+      <div id="fixFlt" class="kinds"></div>
+      <div id="fixBox"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
   <div id="panel-list">
     <div class="card flat">
       <div class="bar">
@@ -267,6 +283,16 @@
     <div class="msg" id="fixMsg"></div>
   </div>
 </div>
+<div id="moveModal" class="modalbg hidden">
+  <div class="card flat" style="max-width:420px;width:100%">
+    <h2>↔ Move to another list</h2>
+    <div id="moveBook" dir="auto" style="font-weight:700;margin-bottom:8px"></div>
+    <label>Move to</label>
+    <select id="moveTo"></select>
+    <div class="btns"><button class="primary" id="moveBtn" onclick="doMove()">Move</button><button class="ghost" onclick="closeMove()">Cancel</button></div>
+    <div class="msg" id="moveMsg"></div>
+  </div>
+</div>
 
 <script>
 const sb = supabase.createClient(window.PORTAL_CONFIG.url, window.PORTAL_CONFIG.anonKey);
@@ -316,6 +342,7 @@ async function startApp(){
   show('app');
   try { const r = await sb.rpc('am_i_staff'); isStaff = r.data === true; } catch(e) {}
   el('syncBtn').classList.toggle('hidden', !isStaff); el('syncInfo').classList.toggle('hidden', !isStaff); if (isStaff) showLastSync();
+  el('tab-fix').classList.toggle('hidden', !isStaff); if (isStaff) loadFixes(true);
   const saved = (()=>{ try { return localStorage.getItem('yml_profile'); } catch(e){ return null; } })();
   profOpts = (isStaff && profiles.length > 1) ? [ALL_PROF].concat(profiles) : profiles;
   profile = profOpts.find(p => p.id === saved) || profiles[0];
@@ -363,7 +390,7 @@ async function loadBooks(){
     || (recv(a) < recv(b) ? 1 : recv(a) > recv(b) ? -1 : 0)
     || (a.set_name && a.set_name === b.set_name ? (a.vol || 0) - (b.vol || 0)
         : (b.book_no || '').localeCompare(a.book_no || '', undefined, { numeric: true }) || b.id - a.id));
-  let fq = sb.from('fix_requests').select('book_id,issue,status,created_at'); if (!isAll) fq = fq.eq('profile_id', profile.id);
+  let fq = sb.from('fix_requests').select('book_id,issue,status,yml_note,created_at'); if (!isAll) fq = fq.eq('profile_id', profile.id);
   const fr = await fq.in('status', ['open','accepted']);
   fixOpen = {}; (fr.data || []).forEach(r => fixOpen[r.book_id] = r);
   books = all; renderList();
@@ -404,8 +431,11 @@ function bucketOf(b){
   return 'work';
 }
 function showTab(t){
+  if (t === 'fix') { ['draft','work','hist','add','fix'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
+    ['list','add'].forEach(x => el('panel-' + x).classList.add('hidden')); el('panel-fix').classList.remove('hidden'); loadFixes(); return; }
   if (t !== 'add') curTab = t;
-  ['draft','work','hist','add'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
+  ['draft','work','hist','add','fix'].forEach(x => el('tab-' + x).classList.toggle('active', x === t));
+  el('panel-fix').classList.add('hidden');
   el('panel-list').classList.toggle('hidden', t === 'add'); el('panel-add').classList.toggle('hidden', t !== 'add');
   if (t !== 'add') renderList();
 }
@@ -456,7 +486,8 @@ function renderList(){
     if (curTab === 'work') t.push(canEdit ? '<span class="tag lock">Sent · editable</span>' : '<span class="tag lock">🔒 In work · ' + CALL_OFFICE + '</span>');
     else if (curTab === 'draft' && !canEdit) t.push('<span class="tag lock">🔒 ' + CALL_OFFICE + '</span>');
     else if (curTab === 'hist' && b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
-    if (fixOpen[b.id]) t.push(`<span class="tag fix">🔁 Fix requested: ${esc(ISSUE[fixOpen[b.id].issue] || '')}</span>`);
+    if (fixOpen[b.id]) { const fo = fixOpen[b.id]; t.push(`<span class="tag fix">🔁 ${fo.status === 'accepted' ? 'Fix accepted' : 'Fix requested'}: ${esc(ISSUE[fo.issue] || '')}</span>`);
+      if (fo.yml_note) t.push(`<span class="tag fix" dir="auto">YML: ${esc(fo.yml_note)}</span>`); }
     if (isStaff && b.hist_detail) t.push(`<span class="tag staff">YML: ${esc(b.hist_detail)}</span>`);
     if (b.ref) t.push(`<span class="tag">Ref ${esc(b.ref)}</span>`);
     if (b.spine_bot) t.push(`<span class="tag" dir="auto">${esc(b.spine_bot)}</span>`);
@@ -470,13 +501,76 @@ function renderList(){
     if (b.stickers && b.level !== 'Stickers') t.push('<span class="tag">Stickers</span>');
     const title = b.spine_top || b.spine_mid || (b.is_folder ? 'Folder' : b.is_box ? 'Box' : '—');
     const canDel = curTab === 'draft';
+    const canMove = curTab !== 'hist' && moveTargets(b).length && (grp ? grp : [b]).every(x => x.origin === 'portal' && !x.locked && (!x.book_no || isStaff));
     return `<tr>${curTab === 'draft' ? `<td style="width:28px"><input type="checkbox" ${selected.has(b.id) ? 'checked' : ''} onchange="toggleSel(${b.id},this.checked)"></td>` : ''}<td>${b.book_no ? `<span class="bno">${esc(b.book_no)}</span> ` : (curTab==='work' ? '<span class="bno pend">No. pending</span> ' : '')}<b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
       + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
       + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
       + (canEdit ? ` <button class="mini ghost" onclick="${grp ? 'editSet' : 'editBook'}(${b.id})">${grp ? 'Edit set' : 'Edit'}</button>` : '')
       + (curTab === 'hist' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
+      + (canMove ? ` <button class="mini ghost" onclick="openMove(${b.id})">↔ Move</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
+}
+
+/* ---------- move a book (or whole set) to another list of the same login, e.g. Appel ⇄ Blayer ---------- */
+let moveIds = [];
+function moveTargets(b){ return profiles.filter(p => p.id !== b.profile_id); }
+function openMove(id){
+  const b = books.find(x => x.id === id), grp = b.set_name && b.origin === 'portal' ? setGroup(b) : [b];
+  moveIds = grp.map(x => x.id);
+  const from = profiles.find(p => p.id === b.profile_id);
+  el('moveBook').textContent = (b.spine_top || b.spine_mid || 'Book') + (grp.length > 1 ? ` (set · ${grp.length} volumes)` : '') + (from ? ' — now in ' + from.name : '');
+  el('moveTo').innerHTML = moveTargets(b).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  msg('moveMsg', ''); el('moveModal').classList.remove('hidden');
+}
+function closeMove(){ el('moveModal').classList.add('hidden'); moveIds = []; }
+async function doMove(){
+  if (!moveIds.length) return;
+  el('moveBtn').disabled = true;
+  const { error } = await sb.rpc('move_books', { p_ids: moveIds, p_to: el('moveTo').value });
+  el('moveBtn').disabled = false;
+  if (error) return msg('moveMsg', error.message);
+  closeMove(); await loadBooks();
+}
+
+/* ---------- YML: fix requests ---------- */
+let fixRows = [], fixStat = 'active';
+const FSTAT = [['active','Open + accepted'],['open','Open'],['accepted','Accepted'],['done','Done'],['rejected','Rejected'],['all','All']];
+async function loadFixes(quiet){
+  const { data, error } = await sb.from('fix_requests').select('*, books(id,book_no,spine_top,spine_mid,spine_bot,level,profile_id)').order('created_at', { ascending: false }).limit(500);
+  if (error) { if (!quiet) el('fixBox').innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
+  fixRows = data || [];
+  el('cnt-fix').textContent = fixRows.filter(r => r.status === 'open').length;
+  if (!quiet) renderFixes();
+}
+function setFixStat(s){ fixStat = s; renderFixes(); }
+function renderFixes(){
+  const n = s => fixRows.filter(r => s === 'all' || (s === 'active' ? (r.status === 'open' || r.status === 'accepted') : r.status === s)).length;
+  el('fixFlt').innerHTML = FSTAT.map(([k, l]) => `<span class="kind${fixStat === k ? ' on' : ''}" onclick="setFixStat('${k}')">${l}<span class="n">${n(k)}</span></span>`).join('');
+  const rows = fixRows.filter(r => fixStat === 'all' || (fixStat === 'active' ? (r.status === 'open' || r.status === 'accepted') : r.status === fixStat));
+  if (!rows.length) { el('fixBox').innerHTML = '<div class="empty">No fix requests here.</div>'; return; }
+  el('fixBox').innerHTML = rows.map(r => {
+    const b = r.books || {}, p = profiles.find(x => x.id === r.profile_id);
+    const title = [b.spine_top, b.spine_mid, b.spine_bot].filter(Boolean).join(' · ') || 'Book #' + r.book_id;
+    const btn = (s, l, cls) => `<button class="mini ${cls || 'ghost'}" onclick="setFix(${r.id},'${s}')">${l}</button>`;
+    return `<div class="fx"><div class="hd"><span class="st ${r.status}">${r.status}</span><b>${esc(p ? p.name : '')}</b>`
+      + `${b.book_no ? `<span class="bno">${esc(b.book_no)}</span>` : ''}<span>${new Date(r.created_at).toLocaleDateString()}</span></div>`
+      + `<div class="rq"><b dir="auto">${esc(title)}</b><br>🔁 ${esc(ISSUE[r.issue] || r.issue)}${r.where_parts && r.where_parts.length ? ' — ' + esc(r.where_parts.join(', ')) : ''}`
+      + `${r.note ? `<br><span dir="auto">“${esc(r.note)}”</span>` : ''}</div>`
+      + `<div class="ctl"><select id="fxc${r.id}"><option value="">Who pays? —</option><option value="1"${r.yml_charge === true ? ' selected' : ''}>Customer pays</option><option value="0"${r.yml_charge === false ? ' selected' : ''}>Our mistake (free)</option></select></div>`
+      + `<textarea id="fxn${r.id}" dir="auto" placeholder="Note to customer (optional)">${esc(r.yml_note || '')}</textarea>`
+      + `<div class="ctl">${r.status === 'open' ? btn('accepted', '✓ Accept', 'primary') + btn('rejected', '✕ Reject', 'danger') : ''}`
+      + `${r.status === 'accepted' ? btn('done', '✓ Done', 'primary') : ''}${r.status === 'done' || r.status === 'rejected' ? btn('open', '↺ Reopen') : ''}`
+      + `${btn(r.status, 'Save')}</div></div>`;
+  }).join('');
+}
+async function setFix(id, status){
+  const c = el('fxc' + id).value;
+  if (status === 'accepted' && c === '') return alert('Please choose who pays first.');
+  const upd = { status, yml_charge: c === '' ? null : c === '1', yml_note: el('fxn' + id).value.trim() || null };
+  const { error } = await sb.from('fix_requests').update(upd).eq('id', id);
+  if (error) return alert('Could not save: ' + error.message);
+  await loadFixes(); await loadBooks();
 }
 
 /* ---------- form ---------- */
