@@ -508,7 +508,7 @@ function renderList(){
     if (b.stickers && b.level !== 'Stickers') t.push('<span class="tag">Stickers</span>');
     const title = b.spine_top || b.spine_mid || (b.is_folder ? 'Folder' : b.is_box ? 'Box' : '—');
     const canDel = curTab === 'draft';
-    const canMove = curTab !== 'hist' && moveTargets(b).length && (grp ? grp : [b]).every(x => x.origin === 'portal' && !x.locked && (!x.book_no || isStaff));
+    const canMove = curTab !== 'hist' && moveTargets(b).length && (grp ? grp : [b]).every(x => x.origin === 'portal' && !x.locked);   // until measurements
     return `<tr>${curTab === 'draft' ? `<td style="width:28px"><input type="checkbox" ${selected.has(b.id) ? 'checked' : ''} onchange="toggleSel(${b.id},this.checked)"></td>` : ''}<td>${b.book_no ? `<span class="bno">${esc(b.book_no)}</span> ` : (curTab==='work' ? '<span class="bno pend">No. pending</span> ' : '')}<b dir="auto">${esc(title)}</b>${b.spine_mid && b.spine_top ? ` <span dir="auto" style="color:var(--muted)">· ${esc(b.spine_mid)}</span>` : ''}<br>${t.join('')}`
       + (b.notes ? `<br><span dir="auto" style="color:var(--muted);font-size:.76rem">${esc(b.notes)}</span>` : '') + '</td>'
       + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
