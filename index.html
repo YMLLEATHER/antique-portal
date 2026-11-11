@@ -538,6 +538,7 @@ async function doMove(){
 
 /* ---------- YML: fix requests ---------- */
 let fixRows = [], fixStat = 'active';
+const WHERE = { spine_top: 'Spine, top line', spine_mid: 'Spine, middle line', spine_bot: 'Spine, bottom line', front: 'Front cover', name: 'Name line' };
 const FSTAT = [['active','Open + accepted'],['open','Open'],['accepted','Accepted'],['done','Done'],['rejected','Rejected'],['all','All']];
 async function loadFixes(quiet){
   const { data, error } = await sb.from('fix_requests').select('*, books(id,book_no,spine_top,spine_mid,spine_bot,level,profile_id)').order('created_at', { ascending: false }).limit(500);
@@ -558,7 +559,7 @@ function renderFixes(){
     const btn = (s, l, cls) => `<button class="mini ${cls || 'ghost'}" onclick="setFix(${r.id},'${s}')">${l}</button>`;
     return `<div class="fx"><div class="hd"><span class="st ${r.status}">${r.status}</span><b>${esc(p ? p.name : '')}</b>`
       + `${b.book_no ? `<span class="bno">${esc(b.book_no)}</span>` : ''}<span>${new Date(r.created_at).toLocaleDateString()}</span></div>`
-      + `<div class="rq"><b dir="auto">${esc(title)}</b><br>🔁 ${esc(ISSUE[r.issue] || r.issue)}${r.where_parts && r.where_parts.length ? ' — ' + esc(r.where_parts.join(', ')) : ''}`
+      + `<div class="rq"><b dir="auto">${esc(title)}</b><br>🔁 ${esc(ISSUE[r.issue] || r.issue)}${r.where_parts && r.where_parts.length ? ' — ' + esc(r.where_parts.map(w => WHERE[w] || w).join(', ')) : ''}`
       + `${r.note ? `<br><span dir="auto">“${esc(r.note)}”</span>` : ''}</div>`
       + `<div class="ctl"><select id="fxc${r.id}"><option value="">Who pays? —</option><option value="1"${r.yml_charge === true ? ' selected' : ''}>Customer pays</option><option value="0"${r.yml_charge === false ? ' selected' : ''}>Our mistake (free)</option></select></div>`
       + `<textarea id="fxn${r.id}" dir="auto" placeholder="Note to customer (optional)">${esc(r.yml_note || '')}</textarea>`
