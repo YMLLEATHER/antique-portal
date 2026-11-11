@@ -89,6 +89,8 @@
   .bno{display:inline-block;font-weight:800;font-size:.8rem;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;margin-right:6px;letter-spacing:.3px}
   .bno.pend{background:#e9e3d9;color:var(--muted);font-weight:600}
   .tag.fix{background:#e6f0fb;color:#2f5f8a}
+  .tag.prio{background:#fbe0e0;color:#a12a2a;font-weight:700}
+  button.prio{background:#b23a3a;color:#fff;border-color:#b23a3a}
   .kinds{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
   .kind{border:1px solid var(--line,#ddd);background:#fff;border-radius:999px;padding:4px 12px;font-size:.8rem;cursor:pointer;color:var(--accent)}
   .kind.on{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -389,7 +391,8 @@ async function loadBooks(){
   /* In work: newest received on top (Dyntechs received date, else time sent from the portal; no date = bottom).
      History: ⚠ Check first, then newest. Sets stay together in volume order. */
   const recv = x => bucketOf(x) === 'hist' ? (x.created_at || '') : (x.received_on || x.sent_at || '');
-  all.sort((a, b) => ((a.hist_status === 'check') - (b.hist_status === 'check')) * -1
+  const pr = x => (bucketOf(x) !== 'hist' && x.priority) ? 1 : 0;   // High priority on top of To send / In work
+  all.sort((a, b) => (pr(b) - pr(a)) || ((a.hist_status === 'check') - (b.hist_status === 'check')) * -1
     || (recv(a) < recv(b) ? 1 : recv(a) > recv(b) ? -1 : 0)
     || (a.set_name && a.set_name === b.set_name ? (a.vol || 0) - (b.vol || 0)
         : (b.book_no || '').localeCompare(a.book_no || '', undefined, { numeric: true }) || b.id - a.id));
@@ -489,6 +492,7 @@ function renderList(){
     if (curTab === 'work') t.push(canEdit ? '<span class="tag lock">Sent · editable</span>' : '<span class="tag lock">🔒 In work · ' + CALL_OFFICE + '</span>');
     else if (curTab === 'draft' && !canEdit) t.push('<span class="tag lock">🔒 ' + CALL_OFFICE + '</span>');
     else if (curTab === 'hist' && b.hist_status === 'check' && isStaff) t.push('<span class="tag chk">⚠ Check</span>');
+    if (b.priority && curTab !== 'hist') t.unshift('<span class="tag prio">🔴 High priority</span>');
     if (fixOpen[b.id]) { const fo = fixOpen[b.id]; t.push(`<span class="tag fix">🔁 ${fo.status === 'accepted' ? 'Fix accepted' : 'Fix requested'}: ${esc(ISSUE[fo.issue] || '')}</span>`);
       if (fo.yml_note) t.push(`<span class="tag fix" dir="auto">YML: ${esc(fo.yml_note)}</span>`); }
     if (isStaff && b.hist_detail) t.push(`<span class="tag staff">YML: ${esc(b.hist_detail)}</span>`);
@@ -510,9 +514,19 @@ function renderList(){
       + `<td style="white-space:nowrap;text-align:right">${curTab === 'hist' ? `<button class="mini ghost" onclick="reorder(${b.id})">Order again</button>` : ''}`
       + (canEdit ? ` <button class="mini ghost" onclick="${grp ? 'editSet' : 'editBook'}(${b.id})">${grp ? 'Edit set' : 'Edit'}</button>` : '')
       + (curTab === 'hist' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
+      + (canPrio(b) ? ` <button class="mini ${b.priority ? 'prio' : 'ghost'}" onclick="togglePrio(${b.id})" title="Mark as urgent — YML will do it first">${b.priority ? '🔴 High priority ✓' : '☆ High priority'}</button>` : '')
       + (canMove ? ` <button class="mini ghost" onclick="openMove(${b.id})">↔ Move</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
+}
+
+/* ---------- High priority (only lists with can_priority: Appel, Blayer) ---------- */
+function canPrio(b){ const p = profiles.find(x => x.id === b.profile_id); return !!(p && p.can_priority) && bucketOf(b) !== 'hist'; }
+async function togglePrio(id){
+  const b = books.find(x => x.id === id), grp = b.set_name && b.origin === 'portal' ? setGroup(b) : [b], on = !b.priority;
+  const { error } = await sb.rpc('set_priority', { p_ids: grp.map(x => x.id), p_on: on });
+  if (error) return alert('Could not save: ' + error.message);
+  await loadBooks();
 }
 
 /* ---------- move a book (or whole set) to another list of the same login, e.g. Appel ⇄ Blayer ---------- */
