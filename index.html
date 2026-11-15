@@ -520,7 +520,7 @@ function renderList(){
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
 }
 
-/* ---------- High priority (only lists with can_priority: Appel, Blayer) ---------- */
+/* ---------- High priority (only lists with profiles.can_priority) ---------- */
 function canPrio(b){ const p = profiles.find(x => x.id === b.profile_id); return !!(p && p.can_priority) && bucketOf(b) !== 'hist'; }
 async function togglePrio(id){
   const b = books.find(x => x.id === id), grp = b.set_name && b.origin === 'portal' ? setGroup(b) : [b], on = !b.priority;
@@ -529,7 +529,7 @@ async function togglePrio(id){
   await loadBooks();
 }
 
-/* ---------- move a book (or whole set) to another list of the same login, e.g. Appel ⇄ Blayer ---------- */
+/* ---------- move a book (or whole set) to another list of the same login ---------- */
 let moveIds = [];
 function moveTargets(b){ return profiles.filter(p => p.id !== b.profile_id); }
 function openMove(id){
