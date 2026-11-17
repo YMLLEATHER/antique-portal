@@ -244,7 +244,9 @@
         <div class="btns">
           <button class="primary" id="saveBtn" onclick="save()">Save</button>
           <button class="ghost" onclick="cancelForm()">Cancel</button>
+          <button class="ghost hidden" id="filesBtn" onclick="openFiles(window._filesFor)">📎 Files</button>
         </div>
+        <div class="hint" id="filesHint">📎 To attach a PDF or photos, save the book and click 📎 next to it in the list.</div>
         <div class="msg" id="fMsg"></div>
       </section>
 
@@ -283,6 +285,20 @@
     <textarea id="fixNote" dir="auto" placeholder="What should it say / what happened"></textarea>
     <div class="btns"><button class="primary" id="fixSend" onclick="sendFix()">Send to YML</button><button class="ghost" onclick="closeFix()">Cancel</button></div>
     <div class="msg" id="fixMsg"></div>
+  </div>
+</div>
+<div id="filesModal" class="modalbg hidden">
+  <div class="card flat" style="max-width:480px;width:100%;max-height:90vh;overflow:auto">
+    <h2>📎 Files</h2>
+    <div id="filesBook" dir="auto" style="font-weight:700;margin-bottom:8px"></div>
+    <div id="filesList"></div>
+    <div id="filesAdd" style="margin-top:10px">
+      <label>Add files (PDF, photos – up to 10 MB each)</label>
+      <input type="file" id="filesInput" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.txt">
+      <div class="btns"><button class="primary" id="filesUpBtn" onclick="uploadFiles()">Upload</button></div>
+    </div>
+    <div class="btns"><button class="ghost" onclick="closeFiles()">Close</button></div>
+    <div class="msg" id="filesMsg"></div>
   </div>
 </div>
 <div id="moveModal" class="modalbg hidden">
@@ -399,12 +415,14 @@ async function loadBooks(){
   let fq = sb.from('fix_requests').select('book_id,issue,status,yml_note,created_at'); if (!isAll) fq = fq.eq('profile_id', profile.id);
   const fr = await fq.in('status', ['open','accepted']);
   fixOpen = {}; (fr.data || []).forEach(r => fixOpen[r.book_id] = r);
+  filesBy = {}; { const fl = await sb.from('book_files').select('id,book_id,name,path,mime,size,created_at').order('created_at');
+    (fl.data || []).forEach(r => (filesBy[r.book_id] = filesBy[r.book_id] || []).push(r)); }
   staffNote = {};
   if (isStaff) { const sn = await sb.from('staff_notes').select('book_id,note'); (sn.data || []).forEach(r => staffNote[r.book_id] = r.note); }
   books = all; renderList();
 }
 
-let curTab = 'draft', fixOpen = {}, fixBookId = null, curKind = '', profOpts = [], staffNote = {};
+let curTab = 'draft', fixOpen = {}, fixBookId = null, curKind = '', profOpts = [], staffNote = {}, filesBy = {};
 const ALL_PROF = { id: '__all', name: 'All customers (YML)', show_extras: true };
 const KINDS = [['','All'],['bind','Bindings'],['half','Half leather'],['stk','Stickers']];
 function kindOf(b){ return (b.level === 'Half leather' || b.half_leather) ? 'half' : (b.level === 'Stickers' || b.stickers) ? 'stk' : 'bind'; }
@@ -519,6 +537,7 @@ function renderList(){
       + (curTab === 'hist' && !fixOpen[b.id] ? ` <button class="mini ghost" onclick="openFix(${b.id})">🔁 Fix</button>` : '')
       + (canPrio(b) ? ` <button class="mini ${b.priority ? 'prio' : 'ghost'}" onclick="togglePrio(${b.id})" title="Mark as urgent — YML will do it first">${b.priority ? '🔴 High priority ✓' : '☆ High priority'}</button>` : '')
       + (canMove ? ` <button class="mini ghost" onclick="openMove(${b.id})">↔ Move</button>` : '')
+      + ((groupFiles(b).length || canAttach(b)) ? ` <button class="mini ghost" onclick="openFiles(${b.id})" title="Files (PDF, photos)">📎${groupFiles(b).length ? ' ' + groupFiles(b).length : ''}</button>` : '')
       + (isStaff ? ` <button class="mini ghost" onclick="editStaffNote(${b.id})" title="YML note – staff only, not sent to Dyntechs">📝</button>` : '')
       + (canDel ? ` <button class="mini danger" onclick="delBook(${b.id})">Delete</button>` : '') + '</td></tr>';
   }).join('') + '</tbody></table>' + (rows.length > 500 ? `<div class="empty">Showing 500 of ${rows.length} — use search to narrow.</div>` : '');
@@ -531,6 +550,56 @@ async function togglePrio(id){
   const { error } = await sb.rpc('set_priority', { p_ids: grp.map(x => x.id), p_on: on });
   if (error) return alert('Could not save: ' + error.message);
   await loadBooks();
+}
+
+/* ---------- files per book (bucket book-files, table book_files; a set shares its files; the sync copies them to the Dyntechs card) ---------- */
+let filesBookId = null;
+function filesGroup(b){ return b.set_name && b.origin === 'portal' ? setGroup(b) : [b]; }
+function groupFiles(b){ const seen = {}, out = []; filesGroup(b).forEach(x => (filesBy[x.id] || []).forEach(f => { if (!seen[f.path]) { seen[f.path] = 1; out.push(f); } })); return out; }
+function canAttach(b){ return isStaff || (bucketOf(b) !== 'hist' && b.origin === 'portal' && !b.locked); }
+function openFiles(id){
+  const b = books.find(x => x.id === id); if (!b) return; filesBookId = id;
+  el('filesBook').textContent = (b.book_no ? b.book_no + ' · ' : '') + (b.spine_top || b.spine_mid || 'Book') + (filesGroup(b).length > 1 ? ` (set · ${filesGroup(b).length} volumes)` : '');
+  el('filesAdd').classList.toggle('hidden', !canAttach(b)); el('filesInput').value = ''; msg('filesMsg', '');
+  renderFiles(); el('filesModal').classList.remove('hidden');
+}
+function closeFiles(){ el('filesModal').classList.add('hidden'); filesBookId = null; renderList(); }
+function renderFiles(){
+  const b = books.find(x => x.id === filesBookId), fl = groupFiles(b), ok = canAttach(b);
+  el('filesList').innerHTML = fl.length ? fl.map(f => `<div style="display:flex;gap:8px;align-items:center;margin:4px 0"><a href="#" onclick="viewFile('${esc(f.path)}');return false" dir="auto">📄 ${esc(f.name)}</a><span style="color:var(--muted);font-size:.75rem">${f.size ? Math.max(1, Math.round(f.size / 1024)) + ' KB' : ''}</span>${ok ? `<button class="mini danger" onclick="delFile('${esc(f.path)}')">✕</button>` : ''}</div>`).join('') : '<div class="empty">No files yet.</div>';
+}
+async function viewFile(path){
+  const w = window.open('', '_blank');
+  const { data, error } = await sb.storage.from('book-files').createSignedUrl(path, 600);
+  if (error) { if (w) w.close(); return alert('Could not open: ' + error.message); }
+  if (w) w.location = data.signedUrl; else location.href = data.signedUrl;
+}
+async function uploadFiles(){
+  const b = books.find(x => x.id === filesBookId), files = [...el('filesInput').files];
+  if (!files.length) return msg('filesMsg', 'Choose a file first.');
+  if (files.some(f => f.size > 10485760)) return msg('filesMsg', 'Each file must be up to 10 MB.');
+  el('filesUpBtn').disabled = true; msg('filesMsg', 'Uploading…', true);
+  const grp = filesGroup(b);
+  for (const f of files) {
+    const safe = f.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-80) || 'file';
+    const path = `${b.profile_id}/${b.id}/${Date.now()}-${safe}`;
+    const up = await sb.storage.from('book-files').upload(path, f, { contentType: f.type || 'application/octet-stream' });
+    if (up.error) { el('filesUpBtn').disabled = false; return msg('filesMsg', 'Could not upload ' + f.name + ': ' + up.error.message); }
+    const rows = grp.map(x => ({ book_id: x.id, profile_id: x.profile_id, path, name: f.name, mime: f.type || null, size: f.size }));
+    const { data, error } = await sb.from('book_files').insert(rows).select('id,book_id,name,path,mime,size,created_at');
+    if (error) { el('filesUpBtn').disabled = false; return msg('filesMsg', 'Could not save ' + f.name + ': ' + error.message); }
+    (data || []).forEach(r => (filesBy[r.book_id] = filesBy[r.book_id] || []).push(r));
+  }
+  el('filesUpBtn').disabled = false; el('filesInput').value = ''; msg('filesMsg', 'Uploaded.', true); renderFiles();
+}
+async function delFile(path){
+  if (!confirm('Remove this file?')) return;
+  const b = books.find(x => x.id === filesBookId), ids = filesGroup(b).map(x => x.id);
+  const { error } = await sb.from('book_files').delete().eq('path', path).in('book_id', ids);
+  if (error) return msg('filesMsg', 'Could not remove: ' + error.message);
+  await sb.storage.from('book-files').remove([path]);
+  ids.forEach(i => { if (filesBy[i]) filesBy[i] = filesBy[i].filter(f => f.path !== path); });
+  renderFiles();
 }
 
 /* ---------- YML note (staff only; table staff_notes, never sent to Dyntechs, never overwritten by the sync) ---------- */
@@ -685,6 +754,8 @@ function prepForm(){
   el('qtyWrap').classList.toggle('hidden', !!(editing || editingSet));
   el('formTitle').textContent = editingSet ? 'Edit set · ' + editingSet[0].set_name : editing ? 'Edit book' : 'New book';
   el('saveBtn').textContent = (editing || editingSet) ? 'Save changes' : 'Save to “To send”';
+  window._filesFor = editingSet ? editingSet[0].id : editing ? editing.id : null;
+  el('filesBtn').classList.toggle('hidden', !window._filesFor); el('filesHint').classList.toggle('hidden', !!window._filesFor);
   toggles(); showTab('add'); window.scrollTo(0, 0);
 }
 /* Unfinished new book stays until Cancel or Save (kept per book list, also after closing the page) */
