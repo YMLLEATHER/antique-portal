@@ -144,6 +144,27 @@ Deno.serve(async (req) => {
       } catch (e) { log.push(`sheet #${b.id} ERROR ${e}`); }
     }
 
+    // ---- FILES (portal 📎) -> ir.attachment on the Dyntechs card. Only adds; never deletes anything in Dyntechs ----
+    const { data: att } = await sb.from("book_files").select("id,book_id,path,name,mime").is("dyn_att_id", null).order("id").limit(30);
+    if (att?.length) {
+      const { data: bk } = await sb.from("books").select("id,dyn_id,dyn_gone").in("id", [...new Set(att.map((a) => a.book_id))]);
+      // deno-lint-ignore no-explicit-any
+      const D: Record<string, any> = Object.fromEntries((bk || []).map((x) => [x.id, x]));
+      for (const a of att) {
+        const b = D[a.book_id];
+        if (!b?.dyn_id || b.dyn_gone) continue;   // no card yet (book not sent) -> next run
+        try {
+          const { data: blob, error } = await sb.storage.from("book-files").download(a.path);
+          if (error || !blob) throw error || new Error("download failed");
+          const u8 = new Uint8Array(await blob.arrayBuffer());
+          let bin = ""; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+          const attId = await kw("ir.attachment", "create", [{ name: a.name, datas: btoa(bin), res_model: "x_antique_book", res_id: b.dyn_id, mimetype: a.mime || "application/octet-stream" }]);
+          await sb.from("book_files").update({ dyn_att_id: attId }).eq("id", a.id);
+          log.push(`file #${a.id} -> card ${b.dyn_id} (attachment ${attId})`);
+        } catch (e) { log.push(`file #${a.id} ERROR ${e}`); }
+      }
+    }
+
     // ---- PRIORITY (portal "High priority" button -> x_priority on the card) ----
     const { data: pr } = await sb.from("books").select("id,dyn_id,priority,dyn_priority").not("dyn_id", "is", null).eq("dyn_gone", false).or("priority.eq.true,dyn_priority.eq.true").limit(1000);
     for (const on of [true, false]) {
