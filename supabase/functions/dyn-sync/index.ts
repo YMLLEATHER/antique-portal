@@ -103,7 +103,9 @@ Deno.serve(async (req) => {
           if (!v.x_set_group) delete w.x_set_group;   // never clear a set the office grouped in Dyntechs
           // moved to another customer in the portal: new letter; if it already has a number -> office must print a new sticker (action 710 renumbers)
           const moved = c && c.x_partner_id && c.x_partner_id[0] !== p.dyn_partner_id;
-          if (moved && v.x_prefix !== c.x_prefix) { w.x_prefix = v.x_prefix; if (c.x_seq) { w.x_reprint = true; log.push(`#${b.id} moved – sticker to reprint`); } }
+          // work type changed in the portal (e.g. Level 2 -> Half leather) and this list uses another letter for it: same as a move
+          const retyped = "x_work_type" in w;
+          if ((moved || retyped) && v.x_prefix !== c.x_prefix) { w.x_prefix = v.x_prefix; if (c.x_seq) { w.x_reprint = true; log.push(`#${b.id} ${moved ? "moved" : "work type changed"} – sticker to reprint`); } }
           // notes: append only what changed, keep everything the office wrote
           const oldL = String(base.x_comments || "").split("\n"), newL = String(v.x_comments || "").split("\n");
           const added = newL.filter((l) => l && !oldL.includes(l)), removed = oldL.filter((l) => l && !newL.includes(l) && !l.startsWith("Portal update"));
