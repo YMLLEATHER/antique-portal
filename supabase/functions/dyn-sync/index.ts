@@ -36,6 +36,13 @@ const TXT_LABEL: Record<string, string> = { x_spine_top: "spine top", x_spine_mi
 
 function sleevesPrice(n: number) { return !n ? 0 : n <= 4 ? 75 : n <= 25 ? 150 : 200; }
 
+// Set name in Dyntechs must be unique (Stamp Preview groups cards by x_set_group): "<set name> · <list> #<first portal id of the set>"
+// SK = set key per portal set (profile|set name|volumes) -> lowest book id; filled at the start of each run
+let SK: Record<string, number> = {};
+const skOf = (b: any) => `${b.profile_id}|${b.set_name}|${b.vol_total || 0}`;
+// deno-lint-ignore no-explicit-any
+function setKey(b: any, p: any) { return b.set_name ? `${b.set_name} · ${p.dyn_source || p.name} #${SK[skOf(b)] || b.id}` : false; }
+
 // deno-lint-ignore no-explicit-any
 function cardVals(b: any, p: any) {
   const notes: string[] = [];
@@ -53,7 +60,7 @@ function cardVals(b: any, p: any) {
     x_partner_id: p.dyn_partner_id, x_source: p.dyn_source, x_prefix: prefix,
     x_spine_top: b.spine_top || false, x_spine_middle: b.spine_mid || false, x_spine_bottom: b.spine_bot || false,
     x_front_text: b.front_text || false, x_front_name: b.name_line || false,
-    x_work_type: WT[b.level] || false, x_set_group: b.set_name || false,
+    x_work_type: WT[b.level] || false, x_set_group: setKey(b, p),
     x_comments: notes.join("\n"), x_sheet_ref: `Portal #${b.id}`,
   };
 }
@@ -75,6 +82,8 @@ Deno.serve(async (req) => {
     const { data: profs } = await sb.from("profiles").select("*");
     // deno-lint-ignore no-explicit-any
     const P: Record<string, any> = Object.fromEntries((profs || []).map((p) => [p.id, p]));
+    { const { data: ss } = await sb.from("books").select("id,profile_id,set_name,vol_total").eq("origin", "portal").not("set_name", "is", null).limit(5000);
+      SK = {}; for (const x of ss || []) { const k = skOf(x); if (!SK[k] || x.id < SK[k]) SK[k] = x.id; } }
 
     // ---- BASELINE: what was last sent to each card (dyn_pushed); filled once for cards created before 11/15 ----
     const { data: nob } = await sb.from("books").select("*").eq("origin", "portal").not("dyn_id", "is", null).is("dyn_pushed", null).neq("dyn_state", "pending").limit(500);
@@ -129,6 +138,19 @@ Deno.serve(async (req) => {
         log.push(`#${b.id} ERROR ${e}`);
       }
     }
+
+    // ---- SET NAMES: keep x_set_group = unique set key on every card of a portal set (also measured / done cards; only this field) ----
+    { const { data: sb2 } = await sb.from("books").select("id,profile_id,set_name,vol_total,dyn_id,dyn_pushed").eq("origin", "portal").not("set_name", "is", null).not("dyn_id", "is", null).eq("dyn_gone", false).limit(2000);
+      const G: Record<string, { key: string; rows: any[] }> = {};   // deno-lint-ignore no-explicit-any
+      for (const b of sb2 || []) { const p = P[b.profile_id]; if (!p) continue; const key = setKey(b, p) as string;
+        if ((b.dyn_pushed?.x_set_group || "") === key) continue; (G[key] = G[key] || { key, rows: [] }).rows.push(b); }
+      for (const g of Object.values(G).slice(0, 40)) {
+        try {
+          await kw("x_antique_book", "write", [g.rows.map((b) => b.dyn_id), { x_set_group: g.key }]);
+          for (const b of g.rows) await sb.from("books").update({ dyn_pushed: { ...(b.dyn_pushed || {}), x_set_group: g.key } }).eq("id", b.id);
+          log.push(`set "${g.key}": ${g.rows.length} cards`);
+        } catch (e) { log.push(`set "${g.key}" ERROR ${e}`); }
+      } }
 
     // ---- SHEET ROWS (all customers) in work without a card -> create an Expected card, so everything in the portal is in Dyntechs ----
     const { data: sh } = await sb.from("books").select("*").eq("origin", "sheet").eq("hist_status", "in_work").is("dyn_id", null).eq("dyn_gone", false).limit(100);
